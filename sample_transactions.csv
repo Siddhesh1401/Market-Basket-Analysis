@@ -1,0 +1,31 @@
+transaction_id,item,quantity,price,date,time
+1001,SOFTSPUN Microfiber Cloth,1,269,2026-04-01,10:12:00
+1001,3M Car Wash Shampoo,1,250,2026-04-01,10:12:00
+1001,Jopasu Car Duster,1,755,2026-04-01,10:12:00
+1002,Involve Car Perfume,1,307,2026-04-01,11:05:00
+1002,Godrej Car Freshener,1,275,2026-04-01,11:05:00
+1002,Car Dashboard Dresser,1,333,2026-04-01,11:05:00
+1003,WD-40 Multipurpose Spray,1,290,2026-04-01,12:20:00
+1003,Car Windshield Cleaner Tablets,2,170,2026-04-01,12:20:00
+1003,Microfiber Cleaning Cloth,1,337,2026-04-01,12:20:00
+1004,Helmet Open Face,1,1078,2026-04-01,13:18:00
+1004,Bike Chain Lube,1,195,2026-04-01,13:18:00
+1004,Bike Riding Gloves,1,283,2026-04-01,13:18:00
+1005,Car Phone Holder,1,499,2026-04-02,09:45:00
+1005,USB Car Charger,1,349,2026-04-02,09:45:00
+1005,Bluetooth Car Receiver,1,522,2026-04-02,09:45:00
+1006,Tyre Inflator,1,1832,2026-04-02,10:10:00
+1006,Digital Tyre Pressure Gauge,1,1495,2026-04-02,10:10:00
+1006,Tyre Puncture Repair Kit,1,299,2026-04-02,10:10:00
+1007,Car Body Cover,1,1316,2026-04-02,11:22:00
+1007,Door Edge Guard,1,376,2026-04-02,11:22:00
+1007,Bumper Protector Lip,1,440,2026-04-02,11:22:00
+1008,Car Seat Back Organizer,1,1362,2026-04-02,14:02:00
+1008,Document Holder,1,549,2026-04-02,14:02:00
+1008,Neck Pillow,1,509,2026-04-02,14:02:00
+1009,Waterless Car Wash Concentrate,1,649,2026-04-03,10:30:00
+1009,Ceramic Paste Wax,1,695,2026-04-03,10:30:00
+1009,Dashboard Shiner Polish,1,354,2026-04-03,10:30:00
+1010,Windshield Repair Kit,1,399,2026-04-03,16:14:00
+1010,Scratch Remover Compound,1,475,2026-04-03,16:14:00
+1010,Multipurpose Polish,1,421,2026-04-03,16:14:00
