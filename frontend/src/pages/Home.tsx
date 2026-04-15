@@ -1,153 +1,143 @@
-import { Link } from "react-router-dom";
-import { products } from "../data/products";
-import { useCart } from "../context/CartContext";
-import { FiShoppingCart, FiTrendingUp } from "react-icons/fi";
-import { BsCart3, BsCpuFill, BsStars } from "react-icons/bs";
+import { NavLink } from "react-router-dom";
+import {
+  FiArrowRight,
+  FiBarChart2,
+  FiCheckCircle,
+  FiClock,
+  FiDatabase,
+  FiLayers,
+  FiSliders,
+  FiTrendingUp,
+} from "react-icons/fi";
 
-const Home = () => {
-  const { addToCart } = useCart();
-  const topProducts = products.slice(0, 6);
+const features = [
+  {
+    title: "Upload and Analyze",
+    description: "Bring your retail CSV and generate associations in seconds.",
+    icon: FiDatabase,
+  },
+  {
+    title: "Smart Insights",
+    description: "Filter rules using support, confidence, and lift thresholds.",
+    icon: FiSliders,
+  },
+  {
+    title: "Recommendations",
+    description: "Discover products customers are likely to buy together.",
+    icon: FiTrendingUp,
+  },
+  {
+    title: "Report Ready",
+    description: "Generate clean visual reports for business teams.",
+    icon: FiLayers,
+  },
+];
 
+const timeline = [
+  "Upload transaction dataset",
+  "Run market basket analysis",
+  "Review association strengths",
+  "Share reports with your company",
+];
+
+const checklist = [
+  "Upload your CSV and run analysis",
+  "Inspect top product combinations",
+  "Check trend and country charts",
+  "Review top lift-based rules",
+  "Download insights as CSV",
+];
+
+function Home() {
   return (
-    <div className="home">
-      {/* Hero Section */}
-      <section className="hero">
+    <div className="page-shell">
+      <section className="hero-card">
         <div className="hero-content">
-          <div className="hero-badge">🤖 AI-Powered Recommendations</div>
-          <h1 className="hero-title">
-            Shop Smarter.<br />
-            <span className="hero-highlight">We Know What You Need Next.</span>
-          </h1>
-          <p className="hero-subtitle">
-            SmartBasket uses Market Basket Analysis to predict what you'll want to buy —
-            just like Amazon, powered by real retail data and machine learning.
+          <p className="hero-eyebrow">Market Basket Intelligence</p>
+          <h1>Modern Analytics for Product Recommendation</h1>
+          <p>
+            Basket Sense helps teams discover buying behavior, evaluate product
+            relationships, and turn transactions into clear recommendations.
           </p>
-          <div className="hero-buttons">
-            <Link to="/shop" className="btn btn-primary">
-              <BsCart3 /> Browse Products
-            </Link>
-            <Link to="/admin" className="btn btn-secondary">
-              <BsCpuFill /> View Analytics
-            </Link>
-          </div>
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span className="stat-number">541K+</span>
-              <span className="stat-label">Transactions Analysed</span>
-            </div>
-            <div className="hero-stat">
-              <span className="stat-number">4,070</span>
-              <span className="stat-label">Unique Products</span>
-            </div>
-            <div className="hero-stat">
-              <span className="stat-number">847+</span>
-              <span className="stat-label">Association Rules</span>
-            </div>
-          </div>
+          <NavLink to="/dashboard" className="primary-cta">
+            Go to Dashboard <FiArrowRight />
+          </NavLink>
         </div>
-        <div className="hero-visual">
-          <div className="hero-basket-animation">
-            <div className="floating-card card-1">🥛 Milk → 🍞 Bread <span className="conf">72%</span></div>
-            <div className="floating-card card-2">🥚 Eggs → 🥓 Bacon <span className="conf">65%</span></div>
-            <div className="floating-card card-3">🧀 Cheese → 🍷 Wine <span className="conf">58%</span></div>
-            <div className="basket-icon">🛒</div>
+        <div className="hero-visual" aria-hidden>
+          <div className="hero-ring" />
+          <div className="hero-icon-wrap">
+            <FiBarChart2 />
+          </div>
+          <div className="hero-panel panel-a">
+            <p className="panel-label">Top Basket Lift</p>
+            <h4>2.84x</h4>
+            <div className="spark-bars">
+              <span style={{ height: "28%" }} />
+              <span style={{ height: "52%" }} />
+              <span style={{ height: "44%" }} />
+              <span style={{ height: "68%" }} />
+              <span style={{ height: "84%" }} />
+            </div>
+          </div>
+          <div className="hero-panel panel-c">
+            <p className="panel-label">Rule Coverage</p>
+            <h4>87%</h4>
+            <p className="panel-sub">high-confidence pairs</p>
+          </div>
+          <div className="hero-chip chip-a">
+            <FiTrendingUp /> Growth
+          </div>
+          <div className="hero-chip chip-b">
+            <FiClock /> Live Insights
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="how-it-works">
-        <h2 className="section-title">How It Works</h2>
-        <p className="section-subtitle">Three simple steps to smarter shopping</p>
-        <div className="steps-grid">
-          <div className="step-card">
-            <div className="step-number">01</div>
-            <div className="step-icon">🛒</div>
-            <h3>Add Items to Cart</h3>
-            <p>Browse our store and add products you want to your cart — just like any online shop.</p>
-          </div>
-          <div className="step-card">
-            <div className="step-number">02</div>
-            <div className="step-icon">🤖</div>
-            <h3>AI Analyses Your Cart</h3>
-            <p>Our Association Rule Mining model analyses your cart against 541,000 real transactions.</p>
-          </div>
-          <div className="step-card">
-            <div className="step-number">03</div>
-            <div className="step-icon">✨</div>
-            <h3>Get Smart Recommendations</h3>
-            <p>Instantly see what other customers bought alongside your items — with confidence scores.</p>
-          </div>
-        </div>
+      <section className="feature-grid">
+        {features.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <article key={feature.title} className="feature-tile">
+              <div className="feature-icon">
+                <Icon />
+              </div>
+              <h3>{feature.title}</h3>
+              <p>{feature.description}</p>
+            </article>
+          );
+        })}
       </section>
 
-      {/* Top Products Preview */}
-      <section className="top-products">
-        <div className="section-header">
-          <div>
-            <h2 className="section-title">Top Selling Products</h2>
-            <p className="section-subtitle">Most popular items this week</p>
-          </div>
-          <Link to="/shop" className="btn btn-outline">View All Products →</Link>
-        </div>
-        <div className="products-grid">
-          {topProducts.map((product) => (
-            <div key={product.id} className="product-card">
-              <Link to={`/product/${product.id}`}>
-                <div className="product-image-wrap">
-                  <img src={product.image} alt={product.name} className="product-image" />
-                  <span className="product-category">{product.category}</span>
-                </div>
-              </Link>
-              <div className="product-info">
-                <Link to={`/product/${product.id}`}>
-                  <h3 className="product-name">{product.name}</h3>
-                </Link>
-                <div className="product-rating">
-                  {"★".repeat(Math.floor(product.rating))}{"☆".repeat(5 - Math.floor(product.rating))}
-                  <span className="rating-count">({product.reviews})</span>
-                </div>
-                <div className="product-footer">
-                  <span className="product-price">£{product.price.toFixed(2)}</span>
-                  <button
-                    className="btn-add-cart"
-                    onClick={() => addToCart(product)}
-                  >
-                    <FiShoppingCart /> Add
-                  </button>
+      <section className="split-section">
+        <article className="surface-card">
+          <h2>User Journey</h2>
+          <div className="timeline-wrap">
+            {timeline.map((step, index) => (
+              <div key={step} className="timeline-item">
+                <span className="timeline-index">{index + 1}</span>
+                <div>
+                  <h4>Step {index + 1}</h4>
+                  <p>{step}</p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </article>
 
-      {/* Features Banner */}
-      <section className="features-banner">
-        <div className="feature-item">
-          <BsStars className="feature-icon" />
-          <div>
-            <h4>Real ML Model</h4>
-            <p>Trained on actual UK retail data</p>
-          </div>
-        </div>
-        <div className="feature-item">
-          <FiTrendingUp className="feature-icon" />
-          <div>
-            <h4>Live Updates</h4>
-            <p>Recommendations update as cart changes</p>
-          </div>
-        </div>
-        <div className="feature-item">
-          <BsCpuFill className="feature-icon" />
-          <div>
-            <h4>Admin Dashboard</h4>
-            <p>Full analytics and model controls</p>
-          </div>
-        </div>
+        <article className="surface-card">
+          <h2>User Checklist</h2>
+          <ul className="check-list">
+            {checklist.map((item) => (
+              <li key={item}>
+                <FiCheckCircle />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </article>
       </section>
     </div>
   );
-};
+}
 
 export default Home;
