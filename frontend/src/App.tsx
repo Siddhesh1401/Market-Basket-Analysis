@@ -1,5 +1,5 @@
 import { useState, type ChangeEvent } from "react";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
@@ -12,6 +12,12 @@ function AppShell() {
   const [csvText, setCsvText] = useState("");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
+
+  const workspaceStatus = analysis
+    ? { label: "Insights Ready", tone: "ready" }
+    : fileName
+      ? { label: "Dataset Loaded", tone: "pending" }
+      : { label: "Awaiting Dataset", tone: "idle" };
 
   const onFileSelected = (file: File) => {
     if (!file) {
@@ -97,27 +103,34 @@ function AppShell() {
   return (
     <>
       <header className="app-navbar">
-        <div className="nav-container">
-          <div className="brand-mark">Basket Sense</div>
+        <div className="nav-container nav-container-pro">
+          <div className="brand-block">
+            <div className="brand-mark">Basket Sense</div>
+            <p className="brand-sub">Market Basket Intelligence Studio</p>
+          </div>
           <nav className="nav-links">
             <NavLink to="/" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`} end>
               Home
             </NavLink>
-            <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
-              Dashboard
+            <NavLink to="/workspace" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              Workspace
             </NavLink>
             <NavLink to="/reports" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               Reports
             </NavLink>
           </nav>
+          <div className="nav-status" aria-live="polite">
+            <span className={`status-pill ${workspaceStatus.tone}`}>{workspaceStatus.label}</span>
+          </div>
         </div>
       </header>
 
       <main className="app-main">
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
           <Route
-            path="/dashboard"
+            path="/workspace"
             element={
               <Dashboard
                 fileName={fileName}

@@ -11,7 +11,9 @@
 ## Backend Setup
 
 ```bash
-cd backend
+cd "C:/Users/SIDDHESH/Desktop/market basket/backend"
+python -m venv .venv
+./.venv/Scripts/Activate.ps1
 python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 python app.py
@@ -42,9 +44,36 @@ Frontend default URL:
 
 ---
 
+## Daily Startup (After First Setup)
+
+You do not reinstall everything every time you open VS Code.
+
+Backend terminal:
+
+```bash
+cd "C:/Users/SIDDHESH/Desktop/market basket/backend"
+./.venv/Scripts/Activate.ps1
+python app.py
+```
+
+Frontend terminal:
+
+```bash
+cd "C:/Users/SIDDHESH/Desktop/market basket/frontend"
+npm run dev
+```
+
+Run installs again only when needed:
+
+- Run `pip install -r requirements.txt` only if `requirements.txt` changed, venv was recreated, or you are on a new machine.
+- Run `npm install` only if `package.json` or `package-lock.json` changed, or `node_modules` was removed.
+- Run `python -m venv .venv` only once per project environment (or when recreating env).
+
+---
+
 ## Core End-to-End Check
 
-1. Open Dashboard
+1. Open Workspace
 2. Upload `sample_transactions.csv` (or another valid CSV)
 3. Click Analyze Dataset
 4. Confirm KPI cards and charts populate

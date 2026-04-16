@@ -20,6 +20,8 @@ Status: Next priority
 
 ### 2.1 Professional UI Restructure
 
+Status: In progress (initial structured layout foundation implemented)
+
 Goal: Move from basic pages to a structured, professional analytics product flow.
 
 Scope:

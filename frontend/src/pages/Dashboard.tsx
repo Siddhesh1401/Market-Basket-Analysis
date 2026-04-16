@@ -12,13 +12,14 @@ import {
 } from "recharts";
 import {
   FiActivity,
-  FiBarChart2,
+  FiCheckCircle,
   FiDatabase,
   FiDownload,
   FiFileText,
   FiInbox,
-  FiLayers,
   FiLoader,
+  FiSearch,
+  FiSettings,
   FiXCircle,
   FiZap,
   FiUploadCloud,
@@ -35,6 +36,9 @@ type DashboardProps = {
   onClearDataset: () => void;
   runAnalysis: () => Promise<void>;
 };
+
+type WorkflowStageState = "idle" | "active" | "complete";
+type RecommendationSource = "rules" | "itemsets" | "popularity" | "none";
 
 function Dashboard({
   fileName,
@@ -54,6 +58,46 @@ function Dashboard({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const workflowStages = useMemo(
+    () => [
+      {
+        title: "Upload",
+        subtitle: "Bring transaction data",
+        state: (fileName ? "complete" : "active") as WorkflowStageState,
+      },
+      {
+        title: "Configure",
+        subtitle: "Review analysis profile",
+        state: (fileName ? "active" : "idle") as WorkflowStageState,
+      },
+      {
+        title: "Analyze",
+        subtitle: "Run market basket mining",
+        state: (analysis ? "complete" : isAnalyzing || fileName ? "active" : "idle") as WorkflowStageState,
+      },
+      {
+        title: "Inspect",
+        subtitle: "Explore insight quality",
+        state: (analysis ? "active" : "idle") as WorkflowStageState,
+      },
+      {
+        title: "Export",
+        subtitle: "Share filtered rule outputs",
+        state: (analysis ? "active" : "idle") as WorkflowStageState,
+      },
+    ],
+    [analysis, fileName, isAnalyzing],
+  );
+
+  const analysisProfile = [
+    { label: "Algorithm", value: "FP-Growth (baseline profile)" },
+    { label: "Min Support", value: "0.02" },
+    { label: "Min Confidence", value: "0.10" },
+    { label: "Min Lift", value: "1.00" },
+    { label: "Rule Cap", value: "Top 400 rules" },
+    { label: "Itemset Max Length", value: "2 items" },
+  ];
 
   useEffect(() => {
     if (!fileName) {
@@ -100,9 +144,12 @@ function Dashboard({
     return `${value.slice(0, maxLength - 1)}...`;
   };
 
-  const recommendations = useMemo(() => {
+  const recommendationResult = useMemo(() => {
     if (!selectedItem || !analysis) {
-      return [];
+      return {
+        source: "none" as RecommendationSource,
+        rows: [] as Recommendation[],
+      };
     }
 
     type Recommendation = {
@@ -161,10 +208,36 @@ function Dashboard({
             })
             .filter((value): value is Recommendation => value !== null);
 
-    const fallbackMatches = ruleCandidates.length > 0 ? ruleCandidates : fallbackItemsetCandidates;
+    const fallbackPopularityCandidates: Recommendation[] =
+      ruleCandidates.length > 0 || fallbackItemsetCandidates.length > 0
+        ? []
+        : analysis.itemFrequency
+            .filter((item) => item.item !== selectedItem)
+            .map((item) => ({
+              consequent: item.item,
+              confidence: item.count / Math.max(analysis.totalTransactions, 1),
+              lift: 1,
+              support: item.count / Math.max(analysis.totalRows, 1),
+            }));
+
+    const fallbackMatches =
+      ruleCandidates.length > 0
+        ? ruleCandidates
+        : fallbackItemsetCandidates.length > 0
+          ? fallbackItemsetCandidates
+          : fallbackPopularityCandidates;
+
+    let source: RecommendationSource = "none";
+    if (ruleCandidates.length > 0) {
+      source = "rules";
+    } else if (fallbackItemsetCandidates.length > 0) {
+      source = "itemsets";
+    } else if (fallbackPopularityCandidates.length > 0) {
+      source = "popularity";
+    }
 
     const seen = new Set<string>();
-    return fallbackMatches
+    const rows = fallbackMatches
       .sort((a, b) => {
         if (b.confidence !== a.confidence) {
           return b.confidence - a.confidence;
@@ -179,6 +252,8 @@ function Dashboard({
         return true;
       })
       .slice(0, 5);
+
+    return { source, rows };
   }, [analysis, filteredRules, selectedItem]);
 
   const topProducts = useMemo(
@@ -186,24 +261,92 @@ function Dashboard({
     [analysis],
   );
 
-  const downloadRulesCsv = () => {
-    if (filteredRules.length === 0) {
+  const escapeCsvValue = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+  const triggerCsvDownload = (targetFileName: string, header: string, rows: string[]) => {
+    if (rows.length === 0) {
       return;
     }
-    const header = "Antecedent,Consequent,Support,Confidence,Lift\n";
-    const rows = filteredRules
-      .map(
-        (rule) =>
-          `"${rule.antecedent}","${rule.consequent}",${rule.support.toFixed(4)},${rule.confidence.toFixed(4)},${rule.lift.toFixed(4)}`,
-      )
-      .join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv" });
+    const csvContent = `${header}\n${rows.join("\n")}`;
+    const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "basket-sense-rules.csv";
+    a.download = targetFileName;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportMetadata = useMemo(() => {
+    if (!analysis) {
+      return {
+        label: "Export Rules CSV",
+        count: 0,
+        hint: "",
+      };
+    }
+
+    if (filteredRules.length > 0) {
+      return {
+        label: "Export Filtered Rules CSV",
+        count: filteredRules.length,
+        hint: "",
+      };
+    }
+
+    if (analysis.rules.length > 0) {
+      return {
+        label: "Export All Rules CSV",
+        count: analysis.rules.length,
+        hint: "Current thresholds removed all rules, so export will use all mined rules.",
+      };
+    }
+
+    if (analysis.topItemsets.length > 0) {
+      return {
+        label: "Export Itemsets CSV",
+        count: analysis.topItemsets.length,
+        hint: "No association rules were generated, so export will use co-occurring itemsets.",
+      };
+    }
+
+    return {
+      label: "Export Item Frequency CSV",
+      count: analysis.itemFrequency.length,
+      hint: "No co-occurrence pairs were found, so export will use item popularity.",
+    };
+  }, [analysis, filteredRules.length]);
+
+  const downloadRulesCsv = () => {
+    if (!analysis) {
+      return;
+    }
+
+    const rulesToExport = filteredRules.length > 0 ? filteredRules : analysis.rules;
+    if (rulesToExport.length > 0) {
+      const header = "Antecedent,Consequent,Support,Confidence,Lift";
+      const rows = rulesToExport.map(
+        (rule) =>
+          `${escapeCsvValue(rule.antecedent)},${escapeCsvValue(rule.consequent)},${rule.support.toFixed(4)},${rule.confidence.toFixed(4)},${rule.lift.toFixed(4)}`,
+      );
+      triggerCsvDownload("basket-sense-rules.csv", header, rows);
+      return;
+    }
+
+    if (analysis.topItemsets.length > 0) {
+      const header = "Itemset,Count,Support";
+      const rows = analysis.topItemsets.map(
+        (itemset) => `${escapeCsvValue(itemset.items)},${itemset.count},${itemset.support.toFixed(4)}`,
+      );
+      triggerCsvDownload("basket-sense-itemsets.csv", header, rows);
+      return;
+    }
+
+    const header = "Item,Count,ShareOfRows";
+    const rows = analysis.itemFrequency.map(
+      (item) => `${escapeCsvValue(item.item)},${item.count},${(item.count / Math.max(analysis.totalRows, 1)).toFixed(4)}`,
+    );
+    triggerCsvDownload("basket-sense-item-frequency.csv", header, rows);
   };
 
   const formatFileSize = (size: number | null) => {
@@ -267,49 +410,49 @@ function Dashboard({
   ];
 
   return (
-    <div className="page-shell">
-      <section className="hero-mini dashboard-hero-premium">
-        <div className="dashboard-hero-grid">
-          <div className="dashboard-hero-copy">
-            <p className="hero-eyebrow">Dashboard</p>
-            <h1>Market Basket Workspace</h1>
-            <p>
-              Upload transaction data, tune thresholds, and surface product
-              recommendations in a modern analytics workflow.
-            </p>
-            <div className="hero-inline-metrics">
-              <span>
-                <FiDatabase /> CSV Ingestion
-              </span>
-              <span>
-                <FiBarChart2 /> Real-time Insights
-              </span>
-            </div>
-          </div>
-
-          <div className="dashboard-hero-art" aria-hidden>
-            <div className="dashboard-art-orb" />
-            <div className="dashboard-art-card card-main">
-              <p>Signal Strength</p>
-              <h4>2.84x</h4>
-              <div className="art-bars">
-                <span style={{ height: "35%" }} />
-                <span style={{ height: "52%" }} />
-                <span style={{ height: "66%" }} />
-                <span style={{ height: "80%" }} />
-              </div>
-            </div>
-            <div className="dashboard-art-card card-float">
-              <FiLayers /> Rule Engine Active
-            </div>
-          </div>
+    <div className="page-shell workspace-shell">
+      <section className="hero-mini workflow-hero">
+        <p className="hero-eyebrow">Workspace</p>
+        <h1>Structured Market Basket Workflow</h1>
+        <p>
+          Move through a clear analytics sequence: upload data, review analysis profile,
+          run mining, inspect rule quality, and export stakeholder-ready outputs.
+        </p>
+        <div className="hero-inline-metrics workflow-metrics">
+          <span>
+            <FiDatabase /> Controlled Data Intake
+          </span>
+          <span>
+            <FiSettings /> Guided Analysis Stages
+          </span>
+          <span>
+            <FiSearch /> Insight Inspection
+          </span>
         </div>
       </section>
 
-      <section className="surface-card upload-card premium-upload-card">
+      <section className="surface-card workflow-rail">
+        {workflowStages.map((stage, index) => (
+          <article key={stage.title} className={`workflow-step ${stage.state}`}>
+            <span className="workflow-step-index">{index + 1}</span>
+            <div>
+              <h3>{stage.title}</h3>
+              <p>{stage.subtitle}</p>
+            </div>
+            {stage.state === "complete" && <FiCheckCircle className="workflow-step-check" />}
+          </article>
+        ))}
+      </section>
+
+      <section className="workspace-stage surface-card upload-card premium-upload-card">
+        <div className="stage-head">
+          <p className="stage-kicker">Step 1</p>
+          <h2>Upload Dataset</h2>
+          <p>Bring your transaction CSV to initialize the workspace session.</p>
+        </div>
+
         <div className="upload-heading-row">
           <div>
-            <h2>Upload Dataset</h2>
             <p className="upload-subtext">
               Drag and drop your retail CSV, then run one-click basket analysis.
             </p>
@@ -353,9 +496,6 @@ function Dashboard({
           <button className="danger-btn" type="button" onClick={clearDataset} disabled={!fileName && !analysis}>
             <FiXCircle /> Remove Dataset
           </button>
-          <button className="ghost-btn" type="button" onClick={downloadRulesCsv}>
-            <FiDownload /> Export Rules
-          </button>
         </div>
 
         {fileName && (
@@ -393,8 +533,32 @@ function Dashboard({
         {error && <p className="error-pill">{error}</p>}
       </section>
 
+      <section className="workspace-stage surface-card">
+        <div className="stage-head">
+          <p className="stage-kicker">Step 2</p>
+          <h2>Configure Analysis Profile</h2>
+          <p>
+            This release uses a standardized baseline profile so teams can compare results
+            consistently across datasets.
+          </p>
+        </div>
+        <div className="profile-grid">
+          {analysisProfile.map((setting) => (
+            <article key={setting.label} className="profile-tile">
+              <p>{setting.label}</p>
+              <h4>{setting.value}</h4>
+            </article>
+          ))}
+        </div>
+      </section>
+
       {!analysis && !error && (
-        <section className="surface-card empty-card premium-empty">
+        <section className="workspace-stage surface-card empty-card premium-empty">
+          <div className="stage-head stage-head-slim">
+            <p className="stage-kicker">Step 3</p>
+            <h2>Run Analysis</h2>
+            <p>Execute mining once the dataset is loaded to unlock inspection views.</p>
+          </div>
           <div className="empty-state-bg" />
           <div className="empty-icon-wrap" aria-hidden>
             <FiInbox />
@@ -409,27 +573,39 @@ function Dashboard({
 
       {analysis && (
         <>
-          <section className="kpi-grid">
-            <article className="kpi-card">
-              <p>Total Transactions</p>
-              <h3>{analysis.totalTransactions.toLocaleString()}</h3>
-            </article>
-            <article className="kpi-card">
-              <p>Unique Products</p>
-              <h3>{analysis.uniqueItems.toLocaleString()}</h3>
-            </article>
-            <article className="kpi-card">
-              <p>Filtered Rules</p>
-              <h3>{filteredRules.length.toLocaleString()}</h3>
-            </article>
-            <article className="kpi-card">
-              <p>Countries</p>
-              <h3>{analysis.uniqueCountries.toLocaleString()}</h3>
-            </article>
+          <section className="workspace-stage">
+            <div className="stage-head stage-head-slim">
+              <p className="stage-kicker">Step 3</p>
+              <h2>Analyze Result Snapshot</h2>
+              <p>Confirm mining quality with core volume and coverage indicators.</p>
+            </div>
+            <div className="kpi-grid">
+              <article className="kpi-card">
+                <p>Total Transactions</p>
+                <h3>{analysis.totalTransactions.toLocaleString()}</h3>
+              </article>
+              <article className="kpi-card">
+                <p>Unique Products</p>
+                <h3>{analysis.uniqueItems.toLocaleString()}</h3>
+              </article>
+              <article className="kpi-card">
+                <p>Filtered Rules</p>
+                <h3>{filteredRules.length.toLocaleString()}</h3>
+              </article>
+              <article className="kpi-card">
+                <p>Countries</p>
+                <h3>{analysis.uniqueCountries.toLocaleString()}</h3>
+              </article>
+            </div>
           </section>
 
-          <section className="surface-card">
-            <h2>Rule Filters</h2>
+          <section className="workspace-stage surface-card">
+            <div className="stage-head stage-head-slim">
+              <p className="stage-kicker">Step 4</p>
+              <h2>Inspect Rule Signal</h2>
+              <p>Adjust threshold lenses, then evaluate demand and temporal trend patterns.</p>
+            </div>
+
             <div className="slider-grid">
               <label>
                 Min Support: {minSupport.toFixed(2)}
@@ -444,50 +620,55 @@ function Dashboard({
                 <input type="range" min="1" max="8" step="0.1" value={minLift} onChange={(e) => setMinLift(Number(e.target.value))} />
               </label>
             </div>
+
+            <div className="dashboard-grid-two">
+              <article className="surface-card">
+                <h2>Top Product Demand</h2>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={topProducts} layout="vertical" margin={{ left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis
+                      type="category"
+                      dataKey="item"
+                      width={110}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(value: string) => shortProductLabel(value, 14)}
+                    />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="url(#barGradient)" radius={[0, 8, 8, 0]} />
+                    <defs>
+                      <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#4f46e5" />
+                        <stop offset="100%" stopColor="#3b82f6" />
+                      </linearGradient>
+                    </defs>
+                  </BarChart>
+                </ResponsiveContainer>
+              </article>
+
+              <article className="surface-card">
+                <h2>Monthly Trend</h2>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={analysis.monthlyTransactions}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="transactions" stroke="#4f46e5" strokeWidth={2.5} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </article>
+            </div>
           </section>
 
-          <section className="dashboard-grid-two">
-            <article className="surface-card">
-              <h2>Top Product Demand</h2>
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={topProducts} layout="vertical" margin={{ left: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis
-                    type="category"
-                    dataKey="item"
-                    width={110}
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(value: string) => shortProductLabel(value, 14)}
-                  />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="url(#barGradient)" radius={[0, 8, 8, 0]} />
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#4f46e5" />
-                      <stop offset="100%" stopColor="#3b82f6" />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
-            </article>
+          <section className="workspace-stage surface-card">
+            <div className="stage-head stage-head-slim">
+              <p className="stage-kicker">Step 5</p>
+              <h2>Operational Recommendations and Export</h2>
+              <p>Select a product context, inspect ranked suggestions, and export filtered rules.</p>
+            </div>
 
-            <article className="surface-card">
-              <h2>Monthly Trend</h2>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={analysis.monthlyTransactions}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="transactions" stroke="#4f46e5" strokeWidth={2.5} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </article>
-          </section>
-
-          <section className="surface-card">
-            <h2>Quick Recommendations</h2>
             <div className="recommend-row">
               <label htmlFor="itemSelect">Select Product</label>
               <select id="itemSelect" value={selectedItem} onChange={(e) => setSelectedItem(e.target.value)}>
@@ -499,15 +680,48 @@ function Dashboard({
                 ))}
               </select>
             </div>
+            <div className="recommend-status-block">
+              {!selectedItem && <p className="muted-text">Select a product to preview recommendations.</p>}
+              {selectedItem && recommendationResult.rows.length === 0 && (
+                <p className="muted-text">No recommendations available for this item.</p>
+              )}
+              {selectedItem && recommendationResult.source === "itemsets" && (
+                <p className="muted-text hint-text">
+                  Rule coverage is limited, so these suggestions are based on itemset co-occurrence.
+                </p>
+              )}
+              {selectedItem && recommendationResult.source === "popularity" && (
+                <p className="muted-text hint-text">
+                  This dataset appears to contain mostly single-item baskets, so suggestions are based on overall popularity.
+                </p>
+              )}
+            </div>
             <div className="recommend-grid">
-              {recommendations.length === 0 && <p className="muted-text">No recommendations yet. Select an item to preview.</p>}
-              {recommendations.map((rule, index) => (
+              {recommendationResult.rows.map((rule, index) => (
                 <div key={`${rule.consequent}-${index}`} className="recommend-chip">
                   <h4 title={rule.consequent}>{rule.consequent}</h4>
-                  <p>Confidence {rule.confidence.toFixed(2)}</p>
-                  <p>Lift {rule.lift.toFixed(2)}</p>
+                  <p>
+                    {recommendationResult.source === "popularity" ? "Popularity" : "Confidence"} {rule.confidence.toFixed(2)}
+                  </p>
+                  <p>
+                    {recommendationResult.source === "popularity" ? "Support" : "Lift"}{" "}
+                    {recommendationResult.source === "popularity" ? rule.support.toFixed(2) : rule.lift.toFixed(2)}
+                  </p>
                 </div>
               ))}
+            </div>
+
+            <div className="export-stage">
+              <div>
+                <h3>Export stakeholder-ready rule set</h3>
+                <p>
+                  Current export rows: <strong>{exportMetadata.count.toLocaleString()}</strong>
+                </p>
+                {exportMetadata.hint && <p className="export-hint">{exportMetadata.hint}</p>}
+              </div>
+              <button className="ghost-btn" type="button" onClick={downloadRulesCsv} disabled={exportMetadata.count === 0}>
+                <FiDownload /> {exportMetadata.label}
+              </button>
             </div>
           </section>
         </>

@@ -18,7 +18,7 @@
 
 .app-main {
   min-height: 100vh;
-  padding-top: 86px;
+  padding-top: 102px;
   background: radial-gradient(circle at top right, #eef3ff 0%, #f8faff 35%, #f5f7fb 70%);
 }
 
@@ -39,6 +39,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.nav-container-pro {
+  height: 84px;
+  gap: 0.8rem;
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06rem;
+}
+
+.brand-sub {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #64748b;
+  letter-spacing: 0.01em;
 }
 
 .brand-mark {
@@ -93,6 +111,37 @@
   background: linear-gradient(90deg, #4f46e5, #3b82f6);
   box-shadow: 0 10px 20px rgba(79, 70, 229, 0.34);
   animation: nav-tab-pop 0.28s ease;
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-pill {
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.status-pill.ready {
+  color: #065f46;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.status-pill.pending {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.status-pill.idle {
+  color: #475569;
+  background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 @keyframes nav-tab-pop {
@@ -183,6 +232,13 @@
 .primary-btn:hover {
   transform: translateY(-2px) scale(1.015);
   box-shadow: 0 16px 30px rgba(79, 70, 229, 0.35);
+}
+
+.ghost-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .ghost-btn,
@@ -466,6 +522,191 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.workspace-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.workflow-hero {
+  background:
+    radial-gradient(circle at 87% 5%, rgba(79, 70, 229, 0.12), transparent 34%),
+    linear-gradient(180deg, #ffffff, #fbfcff);
+}
+
+.workflow-metrics {
+  margin-top: 0.9rem;
+}
+
+.workflow-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+  padding: 0.8rem;
+}
+
+.workflow-step {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+  min-height: 92px;
+}
+
+.workflow-step h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.workflow-step p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.workflow-step-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  background: #fff;
+}
+
+.workflow-step-check {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  color: #16a34a;
+}
+
+.workflow-step.active {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+}
+
+.workflow-step.complete {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.workflow-step.idle {
+  opacity: 0.85;
+}
+
+.workspace-stage {
+  margin-top: 0.2rem;
+}
+
+.stage-head {
+  margin-bottom: 0.85rem;
+}
+
+.stage-head h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.22rem;
+}
+
+.stage-head p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+}
+
+.stage-head-slim {
+  margin-bottom: 0.75rem;
+}
+
+.stage-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #4f46e5;
+  font-weight: 700;
+  font-size: 0.74rem;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 0.65rem;
+}
+
+.profile-tile {
+  border: 1px solid #dbe7ff;
+  background: linear-gradient(180deg, #fbfdff, #f7faff);
+  border-radius: 12px;
+  padding: 0.7rem;
+}
+
+.profile-tile p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.profile-tile h4 {
+  margin: 0.3rem 0 0;
+  font-size: 0.98rem;
+  color: #0f172a;
+}
+
+.export-stage {
+  margin-top: 0.9rem;
+  border: 1px solid #dbe7ff;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.export-stage h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.export-stage p {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+}
+
+.reports-hero-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+
+.reports-toolbar {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.reports-toolbar h2 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.reports-toolbar p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  max-width: 64ch;
 }
 
 .dashboard-hero-premium {
@@ -846,6 +1087,11 @@
   margin: 0.65rem 0 0;
 }
 
+.hint-text {
+  color: #1e40af;
+  margin-top: 0.45rem;
+}
+
 .error-pill {
   margin-top: 0.6rem;
   border: 1px solid #fecaca;
@@ -941,6 +1187,10 @@
   flex-wrap: wrap;
 }
 
+.recommend-status-block {
+  margin-top: 0.55rem;
+}
+
 .recommend-row select {
   min-width: 260px;
   border: 1px solid #cbd5e1;
@@ -981,6 +1231,12 @@
   font-size: 0.85rem;
 }
 
+.export-hint {
+  margin-top: 0.35rem;
+  color: #1d4ed8;
+  font-size: 0.82rem;
+}
+
 .reports-grid {
   margin-top: 1rem;
   display: grid;
@@ -990,6 +1246,51 @@
 
 .reports-span-two {
   grid-column: span 2;
+}
+
+.report-callout {
+  margin-top: 1rem;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff, #f8fbff);
+}
+
+.report-callout h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1e3a8a;
+}
+
+.report-callout p {
+  margin: 0.35rem 0 0;
+  color: #334155;
+}
+
+.chart-empty-state {
+  min-height: 300px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+.chart-empty-state h3 {
+  margin: 0;
+  color: #1e293b;
+}
+
+.chart-empty-state p {
+  margin: 0.4rem 0 0;
+  max-width: 50ch;
+  color: #64748b;
+}
+
+.table-empty-cell {
+  text-align: center;
+  color: #64748b;
+  padding: 1rem;
 }
 
 .data-table {
@@ -1022,6 +1323,17 @@
   .dashboard-grid-two,
   .reports-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workflow-rail,
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-hero-row,
+  .reports-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .reports-span-two {
@@ -1077,7 +1389,16 @@
   }
 
   .app-main {
-    padding-top: 82px;
+    padding-top: 98px;
+  }
+
+  .nav-container-pro {
+    height: 78px;
+  }
+
+  .brand-sub,
+  .nav-status {
+    display: none;
   }
 
   .hero-card,

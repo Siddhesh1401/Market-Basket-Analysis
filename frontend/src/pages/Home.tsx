@@ -59,8 +59,8 @@ function Home() {
             Basket Sense helps teams discover buying behavior, evaluate product
             relationships, and turn transactions into clear recommendations.
           </p>
-          <NavLink to="/dashboard" className="primary-cta">
-            Go to Dashboard <FiArrowRight />
+          <NavLink to="/workspace" className="primary-cta">
+            Open Workspace <FiArrowRight />
           </NavLink>
         </div>
         <div className="hero-visual" aria-hidden>
