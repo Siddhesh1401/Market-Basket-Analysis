@@ -16,11 +16,11 @@ Status: Done
 
 ## Phase 2 - Highest-Impact Improvements (Do First)
 
-Status: Next priority
+Status: In progress
 
 ### 2.1 Professional UI Restructure
 
-Status: In progress (initial structured layout foundation implemented)
+Status: Completed
 
 Goal: Move from basic pages to a structured, professional analytics product flow.
 
@@ -39,6 +39,8 @@ Acceptance criteria:
 - UI is presentation-ready for demo, grading, and portfolio use
 
 ### 2.2 User-Driven Analysis Controls
+
+Status: Completed
 
 Goal: Replace hardcoded analysis parameters with user controls.
 

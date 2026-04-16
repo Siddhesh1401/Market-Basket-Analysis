@@ -28,6 +28,9 @@ This documentation set replaces the previous planning-heavy docs and now describ
 | `05_data_contracts_and_mining.md` | Accepted CSV formats, cleaning logic, and mining output schema |
 | `06_run_guide.md` | How to run backend/frontend, smoke checks, and troubleshooting |
 | `07_future_roadmap.md` | Agreed forward plan (professional UI flow + Basket Simulator + next phases) |
+| `phases/README.md` | Entry point for simple completed-phase notes and tester checklists |
+| `phases/phase_2_1.md` | Simple summary and test checklist for Phase 2.1 |
+| `phases/phase_2_2.md` | Simple summary and test checklist for Phase 2.2 |
 
 ---
 

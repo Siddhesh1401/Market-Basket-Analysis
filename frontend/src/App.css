@@ -640,6 +640,12 @@
   gap: 0.65rem;
 }
 
+.control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.65rem;
+}
+
 .profile-tile {
   border: 1px solid #dbe7ff;
   background: linear-gradient(180deg, #fbfdff, #f7faff);
@@ -657,6 +663,143 @@
   margin: 0.3rem 0 0;
   font-size: 0.98rem;
   color: #0f172a;
+}
+
+.control-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.control-card select,
+.control-card input[type="range"] {
+  width: 100%;
+}
+
+.control-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #334155;
+}
+
+.control-inline svg {
+  color: #4f46e5;
+}
+
+.control-note {
+  margin: 0.7rem 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.preset-strip {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+
+.preset-chip {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  border-radius: 999px;
+  padding: 0.34rem 0.68rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+button.preset-chip {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+button.preset-chip:hover {
+  transform: translateY(-1px);
+}
+
+.preset-chip.active {
+  background: linear-gradient(90deg, #4f46e5, #3b82f6);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.28);
+}
+
+.preset-chip.custom {
+  border-style: dashed;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.profile-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.control-warning {
+  margin: 0.5rem 0 0;
+  color: #b45309;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.algo-guide {
+  margin-top: 0.75rem;
+  border: 1px solid #dbe7ff;
+  border-radius: 12px;
+  padding: 0.62rem 0.75rem;
+  background: #fcfdff;
+}
+
+.algo-guide summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.algo-guide summary::-webkit-details-marker {
+  display: none;
+}
+
+.algo-guide-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.algo-guide-grid article {
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 0.62rem;
+}
+
+.algo-guide-grid h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  color: #1e3a8a;
+}
+
+.algo-guide-grid p {
+  margin: 0.34rem 0 0;
+  color: #334155;
+  font-size: 0.84rem;
+}
+
+.algo-guide-grid span {
+  display: inline-block;
+  margin-top: 0.45rem;
+  color: #0369a1;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .export-stage {

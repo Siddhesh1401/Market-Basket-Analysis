@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-do
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
-import type { AnalysisResult } from "./types";
+import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "./types";
 import "./App.css";
 
 function AppShell() {
@@ -56,7 +56,7 @@ function AppShell() {
     setError("");
   };
 
-  const runAnalysis = async () => {
+  const runAnalysis = async (params: AnalysisParams) => {
     if (!csvText) {
       setError("Upload a CSV file first.");
       return;
@@ -70,10 +70,11 @@ function AppShell() {
         },
         body: JSON.stringify({
           csv_text: csvText,
-          algorithm: "fpgrowth",
-          min_support: 0.02,
-          min_confidence: 0.1,
-          min_lift: 1,
+          algorithm: params.algorithm,
+          min_support: params.minSupport,
+          min_confidence: params.minConfidence,
+          min_lift: params.minLift,
+          top_n: params.topN,
         }),
       });
 
@@ -86,7 +87,7 @@ function AppShell() {
         return;
       }
 
-      const body = (await response.json()) as { analysis: AnalysisResult; algorithm: "fpgrowth"; alert?: string };
+      const body = (await response.json()) as { analysis: AnalysisResult; algorithm: MiningAlgorithm; alert?: string };
       setAnalysis(body.analysis);
       setError("");
       if (body.alert) {

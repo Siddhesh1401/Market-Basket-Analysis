@@ -41,14 +41,18 @@ def health():
 # ==================== LIVE DATA MINING ====================
 @app.route('/api/analyze', methods=['POST'])
 def analyze_uploaded_csv():
-    """Run FP-Growth directly on uploaded CSV text"""
+    """Run association mining directly on uploaded CSV text"""
     try:
         data = request.json or {}
         csv_text = data.get('csv_text', '')
-        algorithm = 'fpgrowth'
+        algorithm = str(data.get('algorithm', 'fpgrowth')).strip().lower()
+        if algorithm not in {'apriori', 'fpgrowth'}:
+            return jsonify({'error': 'Unsupported algorithm. Use apriori or fpgrowth.'}), 400
+
         min_support = float(data.get('min_support', 0.01))
         min_confidence = float(data.get('min_confidence', 0.1))
         min_lift = float(data.get('min_lift', 1.0))
+        top_n = int(data.get('top_n', 400))
 
         result = analyze_csv_text(
             csv_text=csv_text,
@@ -56,6 +60,7 @@ def analyze_uploaded_csv():
             min_support=min_support,
             min_confidence=min_confidence,
             min_lift=min_lift,
+            top_n=top_n,
         )
 
         return jsonify({

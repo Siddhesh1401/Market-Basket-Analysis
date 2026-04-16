@@ -144,6 +144,7 @@ def analyze_csv_text(
     min_support: float = 0.01,
     min_confidence: float = 0.1,
     min_lift: float = 1.0,
+    top_n: int = 400,
 ) -> dict[str, Any]:
     if not csv_text or not csv_text.strip():
         raise ValueError("CSV content is empty.")
@@ -247,6 +248,8 @@ def analyze_csv_text(
             "Dataset not suitable for mining after cleaning. It needs at least 2 transactions and 2 unique items."
         )
 
+    top_n = max(1, min(int(top_n), 400))
+
     if algorithm == "apriori":
         frequent_itemsets = apriori(
             basket,
@@ -295,7 +298,7 @@ def analyze_csv_text(
 
     rules: list[dict[str, Any]] = []
     if not rules_df.empty:
-        rules_df = rules_df.sort_values(["lift", "confidence"], ascending=[False, False]).head(400)
+        rules_df = rules_df.sort_values(["lift", "confidence"], ascending=[False, False]).head(top_n)
         for _, row in rules_df.iterrows():
             antecedent = ", ".join(sorted([str(v) for v in row["antecedents"]]))
             consequent = ", ".join(sorted([str(v) for v in row["consequents"]]))
@@ -382,9 +385,9 @@ def analyze_csv_text(
         "suitability": {
             "isSuitable": True,
             "message": (
-                "Dataset cleaned and suitable for FP-Growth mining."
+                f"Dataset cleaned and suitable for {algorithm.upper()} mining."
                 if not used_synthetic_transactions
-                else "Dataset cleaned and suitable for FP-Growth mining (using inferred transaction IDs)."
+                else f"Dataset cleaned and suitable for {algorithm.upper()} mining (using inferred transaction IDs)."
             ),
         },
         "usedSyntheticTransactions": used_synthetic_transactions,

@@ -27,3 +27,11 @@ export type AnalysisResult = {
 };
 
 export type MiningAlgorithm = "apriori" | "fpgrowth";
+
+export type AnalysisParams = {
+  algorithm: MiningAlgorithm;
+  minSupport: number;
+  minConfidence: number;
+  minLift: number;
+  topN: number;
+};

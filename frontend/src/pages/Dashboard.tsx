@@ -12,10 +12,12 @@ import {
 } from "recharts";
 import {
   FiActivity,
+  FiCpu,
   FiCheckCircle,
   FiDatabase,
   FiDownload,
   FiFileText,
+  FiInfo,
   FiInbox,
   FiLoader,
   FiSearch,
@@ -24,7 +26,7 @@ import {
   FiZap,
   FiUploadCloud,
 } from "react-icons/fi";
-import type { AnalysisResult } from "../types";
+import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "../types";
 
 type DashboardProps = {
   fileName: string;
@@ -34,11 +36,51 @@ type DashboardProps = {
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onFileSelected: (file: File) => void;
   onClearDataset: () => void;
-  runAnalysis: () => Promise<void>;
+  runAnalysis: (params: AnalysisParams) => Promise<void>;
 };
 
 type WorkflowStageState = "idle" | "active" | "complete";
 type RecommendationSource = "rules" | "itemsets" | "popularity" | "none";
+type PresetKey = "balanced" | "broad" | "strict";
+type PresetSelection = PresetKey | "custom";
+
+const PRESET_PROFILES: Record<PresetKey, { label: string; description: string; params: AnalysisParams }> = {
+  balanced: {
+    label: "Balanced",
+    description: "General-purpose settings for most retail datasets.",
+    params: {
+      algorithm: "fpgrowth",
+      minSupport: 0.02,
+      minConfidence: 0.2,
+      minLift: 1,
+      topN: 120,
+    },
+  },
+  broad: {
+    label: "Broad",
+    description: "Capture more candidates for exploratory analysis and discovery.",
+    params: {
+      algorithm: "fpgrowth",
+      minSupport: 0.005,
+      minConfidence: 0.1,
+      minLift: 0.8,
+      topN: 240,
+    },
+  },
+  strict: {
+    label: "Strict",
+    description: "Prioritize stronger and higher-confidence associations.",
+    params: {
+      algorithm: "apriori",
+      minSupport: 0.03,
+      minConfidence: 0.35,
+      minLift: 1.2,
+      topN: 80,
+    },
+  },
+};
+
+const PRESET_ORDER: PresetKey[] = ["balanced", "broad", "strict"];
 
 function Dashboard({
   fileName,
@@ -50,9 +92,10 @@ function Dashboard({
   onClearDataset,
   runAnalysis,
 }: DashboardProps) {
-  const [minSupport, setMinSupport] = useState(0.01);
-  const [minConfidence, setMinConfidence] = useState(0.1);
-  const [minLift, setMinLift] = useState(1);
+  const [draftParams, setDraftParams] = useState<AnalysisParams>(PRESET_PROFILES.balanced.params);
+  const [appliedParams, setAppliedParams] = useState<AnalysisParams>(PRESET_PROFILES.balanced.params);
+  const [selectedPreset, setSelectedPreset] = useState<PresetSelection>("balanced");
+  const [appliedPreset, setAppliedPreset] = useState<PresetSelection>("balanced");
   const [selectedItem, setSelectedItem] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -90,15 +133,6 @@ function Dashboard({
     [analysis, fileName, isAnalyzing],
   );
 
-  const analysisProfile = [
-    { label: "Algorithm", value: "FP-Growth (baseline profile)" },
-    { label: "Min Support", value: "0.02" },
-    { label: "Min Confidence", value: "0.10" },
-    { label: "Min Lift", value: "1.00" },
-    { label: "Rule Cap", value: "Top 400 rules" },
-    { label: "Itemset Max Length", value: "2 items" },
-  ];
-
   useEffect(() => {
     if (!fileName) {
       setUploadProgress(0);
@@ -125,11 +159,44 @@ function Dashboard({
     }
     return analysis.rules.filter(
       (rule) =>
-        rule.support >= minSupport &&
-        rule.confidence >= minConfidence &&
-        rule.lift >= minLift,
+        rule.support >= appliedParams.minSupport &&
+        rule.confidence >= appliedParams.minConfidence &&
+        rule.lift >= appliedParams.minLift,
     );
-  }, [analysis, minSupport, minConfidence, minLift]);
+  }, [analysis, appliedParams.minConfidence, appliedParams.minLift, appliedParams.minSupport]);
+
+  const hasPendingChanges = useMemo(
+    () =>
+      draftParams.algorithm !== appliedParams.algorithm ||
+      draftParams.minSupport !== appliedParams.minSupport ||
+      draftParams.minConfidence !== appliedParams.minConfidence ||
+      draftParams.minLift !== appliedParams.minLift ||
+      draftParams.topN !== appliedParams.topN,
+    [appliedParams, draftParams],
+  );
+
+  const currentPresetDescription =
+    selectedPreset === "custom" ? "Manual profile tuned by user controls." : PRESET_PROFILES[selectedPreset].description;
+
+  const applyPreset = (presetKey: PresetKey) => {
+    setSelectedPreset(presetKey);
+    setDraftParams(PRESET_PROFILES[presetKey].params);
+  };
+
+  const updateDraftParams = (next: Partial<AnalysisParams>) => {
+    setSelectedPreset("custom");
+    setDraftParams((prev) => ({ ...prev, ...next }));
+  };
+
+  const applyDraftParams = () => {
+    setAppliedParams(draftParams);
+    setAppliedPreset(selectedPreset);
+  };
+
+  const resetDraftParams = () => {
+    setDraftParams(appliedParams);
+    setSelectedPreset(appliedPreset);
+  };
 
   const parseRuleItems = (value: string) =>
     value
@@ -372,9 +439,14 @@ function Dashboard({
   };
 
   const handleAnalyze = async () => {
+    if (hasPendingChanges) {
+      window.alert("You have unapplied profile changes. Click Apply Settings in Step 2 first.");
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
-      await runAnalysis();
+      await runAnalysis(appliedParams);
     } finally {
       setIsAnalyzing(false);
     }
@@ -489,7 +561,7 @@ function Dashboard({
           <button className="secondary-btn" type="button" onClick={openFilePicker}>
             <FiUploadCloud /> Upload File
           </button>
-          <button className="primary-btn" type="button" onClick={handleAnalyze} disabled={isAnalyzing || !fileName}>
+          <button className="primary-btn" type="button" onClick={handleAnalyze} disabled={isAnalyzing || !fileName || hasPendingChanges}>
             {isAnalyzing ? <FiLoader className="spin" /> : <FiZap />}
             {isAnalyzing ? "Analyzing..." : "Analyze Dataset"}
           </button>
@@ -538,18 +610,129 @@ function Dashboard({
           <p className="stage-kicker">Step 2</p>
           <h2>Configure Analysis Profile</h2>
           <p>
-            This release uses a standardized baseline profile so teams can compare results
-            consistently across datasets.
+            Select the mining algorithm and thresholds before running analysis. These controls
+            are applied directly to backend mining.
           </p>
         </div>
-        <div className="profile-grid">
-          {analysisProfile.map((setting) => (
-            <article key={setting.label} className="profile-tile">
-              <p>{setting.label}</p>
-              <h4>{setting.value}</h4>
-            </article>
-          ))}
+
+        <div className="preset-strip">
+          {PRESET_ORDER.map((presetKey) => {
+            const preset = PRESET_PROFILES[presetKey];
+            return (
+              <button
+                key={presetKey}
+                type="button"
+                className={`preset-chip ${selectedPreset === presetKey ? "active" : ""}`}
+                onClick={() => applyPreset(presetKey)}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+          {selectedPreset === "custom" && <span className="preset-chip custom">Custom</span>}
         </div>
+
+        <p className="control-note">{currentPresetDescription}</p>
+
+        <div className="control-grid">
+          <article className="profile-tile control-card">
+            <p>Algorithm</p>
+            <div className="control-inline">
+              <FiCpu />
+              <select
+                value={draftParams.algorithm}
+                onChange={(e) => updateDraftParams({ algorithm: e.target.value as MiningAlgorithm })}
+              >
+                <option value="fpgrowth">FP-Growth</option>
+                <option value="apriori">Apriori</option>
+              </select>
+            </div>
+          </article>
+
+          <article className="profile-tile control-card">
+            <p>Min Support</p>
+            <h4>{draftParams.minSupport.toFixed(3)}</h4>
+            <input
+              type="range"
+              min="0.005"
+              max="0.2"
+              step="0.005"
+              value={draftParams.minSupport}
+              onChange={(e) => updateDraftParams({ minSupport: Number(e.target.value) })}
+            />
+          </article>
+
+          <article className="profile-tile control-card">
+            <p>Min Confidence</p>
+            <h4>{draftParams.minConfidence.toFixed(2)}</h4>
+            <input
+              type="range"
+              min="0.05"
+              max="1"
+              step="0.05"
+              value={draftParams.minConfidence}
+              onChange={(e) => updateDraftParams({ minConfidence: Number(e.target.value) })}
+            />
+          </article>
+
+          <article className="profile-tile control-card">
+            <p>Min Lift</p>
+            <h4>{draftParams.minLift.toFixed(2)}</h4>
+            <input
+              type="range"
+              min="0.5"
+              max="8"
+              step="0.1"
+              value={draftParams.minLift}
+              onChange={(e) => updateDraftParams({ minLift: Number(e.target.value) })}
+            />
+          </article>
+
+          <article className="profile-tile control-card">
+            <p>Top Rules</p>
+            <h4>{draftParams.topN}</h4>
+            <input
+              type="range"
+              min="20"
+              max="400"
+              step="20"
+              value={draftParams.topN}
+              onChange={(e) => updateDraftParams({ topN: Number(e.target.value) })}
+            />
+          </article>
+        </div>
+
+        <details className="algo-guide">
+          <summary>
+            <FiInfo /> What are FP-Growth and Apriori?
+          </summary>
+          <div className="algo-guide-grid">
+            <article>
+              <h4>FP-Growth</h4>
+              <p>Builds a compact FP-tree and mines frequent patterns without generating huge candidate sets.</p>
+              <span>Best for larger or sparse datasets with many unique products.</span>
+            </article>
+            <article>
+              <h4>Apriori</h4>
+              <p>Generates and tests candidate itemsets level by level, which is simpler but can be slower at scale.</p>
+              <span>Useful for small to medium datasets and easier conceptual explanation.</span>
+            </article>
+          </div>
+        </details>
+
+        <div className="profile-actions">
+          <button className="secondary-btn" type="button" onClick={applyDraftParams} disabled={!hasPendingChanges}>
+            Apply Settings
+          </button>
+          <button className="ghost-btn" type="button" onClick={resetDraftParams} disabled={!hasPendingChanges}>
+            Reset Draft
+          </button>
+        </div>
+
+        <p className="control-note">
+          Applied run profile: <strong>{appliedParams.algorithm.toUpperCase()}</strong> • support {appliedParams.minSupport.toFixed(3)} • confidence {appliedParams.minConfidence.toFixed(2)} • lift {appliedParams.minLift.toFixed(2)} • top {appliedParams.topN} rules
+        </p>
+        {hasPendingChanges && <p className="control-warning">You have unapplied changes. Apply Settings to run analysis with this draft profile.</p>}
       </section>
 
       {!analysis && !error && (
@@ -603,22 +786,7 @@ function Dashboard({
             <div className="stage-head stage-head-slim">
               <p className="stage-kicker">Step 4</p>
               <h2>Inspect Rule Signal</h2>
-              <p>Adjust threshold lenses, then evaluate demand and temporal trend patterns.</p>
-            </div>
-
-            <div className="slider-grid">
-              <label>
-                Min Support: {minSupport.toFixed(2)}
-                <input type="range" min="0.01" max="0.2" step="0.01" value={minSupport} onChange={(e) => setMinSupport(Number(e.target.value))} />
-              </label>
-              <label>
-                Min Confidence: {minConfidence.toFixed(2)}
-                <input type="range" min="0.1" max="1" step="0.05" value={minConfidence} onChange={(e) => setMinConfidence(Number(e.target.value))} />
-              </label>
-              <label>
-                Min Lift: {minLift.toFixed(1)}
-                <input type="range" min="1" max="8" step="0.1" value={minLift} onChange={(e) => setMinLift(Number(e.target.value))} />
-              </label>
+              <p>Evaluate demand and temporal trend patterns produced by your selected run profile.</p>
             </div>
 
             <div className="dashboard-grid-two">
