@@ -13,6 +13,10 @@ import {
 import {
   FiActivity,
   FiAlertTriangle,
+  FiArrowDown,
+  FiArrowUp,
+  FiChevronLeft,
+  FiChevronRight,
   FiCpu,
   FiCheckCircle,
   FiDatabase,
@@ -44,6 +48,10 @@ type WorkflowStageState = "idle" | "active" | "complete";
 type RecommendationSource = "rules" | "itemsets" | "popularity" | "none";
 type PresetKey = "balanced" | "broad" | "strict";
 type PresetSelection = PresetKey | "custom";
+type RuleSearchScope = "all" | "antecedent" | "consequent";
+type RuleSortMetric = "support" | "confidence" | "lift";
+type RuleSortDirection = "asc" | "desc";
+type RuleRow = AnalysisResult["rules"][number];
 
 const PRESET_PROFILES: Record<PresetKey, { label: string; description: string; params: AnalysisParams }> = {
   balanced: {
@@ -98,6 +106,13 @@ function Dashboard({
   const [selectedPreset, setSelectedPreset] = useState<PresetSelection>("balanced");
   const [appliedPreset, setAppliedPreset] = useState<PresetSelection>("balanced");
   const [selectedItem, setSelectedItem] = useState("");
+  const [ruleSearchText, setRuleSearchText] = useState("");
+  const [ruleSearchScope, setRuleSearchScope] = useState<RuleSearchScope>("all");
+  const [ruleSortMetric, setRuleSortMetric] = useState<RuleSortMetric>("lift");
+  const [ruleSortDirection, setRuleSortDirection] = useState<RuleSortDirection>("desc");
+  const [rulePageSize, setRulePageSize] = useState(20);
+  const [rulePage, setRulePage] = useState(1);
+  const [selectedRuleKey, setSelectedRuleKey] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
@@ -187,7 +202,9 @@ function Dashboard({
     if ((analysis.rules?.length ?? 0) === 0) {
       recommendations.push("No rules generated. Try the Broad preset or lower support/confidence thresholds.");
     }
-    if (analysis.usedSyntheticTransactions) {
+    if (analysis.transactionInferenceMode === "row-bucket") {
+      recommendations.push("Invoice/date-time columns were missing, so transactions were approximated from nearby rows. Treat rules as directional guidance.");
+    } else if (analysis.usedSyntheticTransactions) {
       recommendations.push("Transaction IDs were inferred from date/time windows. Add invoice/order IDs for strongest rule quality.");
     }
 
@@ -242,6 +259,82 @@ function Dashboard({
     }
     return `${value.slice(0, maxLength - 1)}...`;
   };
+
+  const getRuleKey = (rule: RuleRow) =>
+    `${rule.antecedent}|${rule.consequent}|${rule.support.toFixed(6)}|${rule.confidence.toFixed(6)}|${rule.lift.toFixed(6)}`;
+
+  const getConfidenceBand = (confidence: number) => {
+    if (confidence >= 0.6) {
+      return "High";
+    }
+    if (confidence >= 0.3) {
+      return "Medium";
+    }
+    return "Low";
+  };
+
+  const searchedRules = useMemo(() => {
+    const needle = ruleSearchText.trim().toLowerCase();
+    if (needle.length === 0) {
+      return filteredRules;
+    }
+
+    return filteredRules.filter((rule) => {
+      const antecedent = rule.antecedent.toLowerCase();
+      const consequent = rule.consequent.toLowerCase();
+
+      if (ruleSearchScope === "antecedent") {
+        return antecedent.includes(needle);
+      }
+      if (ruleSearchScope === "consequent") {
+        return consequent.includes(needle);
+      }
+      return antecedent.includes(needle) || consequent.includes(needle);
+    });
+  }, [filteredRules, ruleSearchScope, ruleSearchText]);
+
+  const sortedRules = useMemo(() => {
+    const next = [...searchedRules];
+    next.sort((a, b) => {
+      const delta = a[ruleSortMetric] - b[ruleSortMetric];
+      return ruleSortDirection === "asc" ? delta : -delta;
+    });
+    return next;
+  }, [ruleSortDirection, ruleSortMetric, searchedRules]);
+
+  const totalRulePages = Math.max(1, Math.ceil(sortedRules.length / rulePageSize));
+
+  useEffect(() => {
+    setRulePage(1);
+  }, [ruleSearchScope, ruleSearchText, ruleSortDirection, ruleSortMetric, rulePageSize, filteredRules.length]);
+
+  useEffect(() => {
+    setRulePage((prev) => Math.min(prev, totalRulePages));
+  }, [totalRulePages]);
+
+  const pagedRules = useMemo(() => {
+    const start = (rulePage - 1) * rulePageSize;
+    return sortedRules.slice(start, start + rulePageSize);
+  }, [rulePage, rulePageSize, sortedRules]);
+
+  const selectedRule = useMemo(
+    () => sortedRules.find((rule) => getRuleKey(rule) === selectedRuleKey) ?? null,
+    [selectedRuleKey, sortedRules],
+  );
+
+  const relatedRules = useMemo(() => {
+    if (!selectedRule) {
+      return [] as RuleRow[];
+    }
+
+    return sortedRules
+      .filter(
+        (rule) =>
+          getRuleKey(rule) !== getRuleKey(selectedRule) &&
+          (rule.antecedent === selectedRule.antecedent || rule.consequent === selectedRule.consequent),
+      )
+      .slice(0, 6);
+  }, [selectedRule, sortedRules]);
 
   const recommendationResult = useMemo(() => {
     if (!selectedItem || !analysis) {
@@ -583,10 +676,34 @@ function Dashboard({
           </p>
           <input ref={inputRef} type="file" accept=".csv" onChange={onFileChange} />
           <div className="required-tags">
-            <span className="tag-pill">invoice/order id</span>
-            <span className="tag-pill">product/item description</span>
-            <span className="tag-pill">optional: transaction date</span>
+            <span className="tag-pill">required: product/item column</span>
+            <span className="tag-pill">best: invoice/order + item</span>
+            <span className="tag-pill">fallback: date/time or row buckets</span>
           </div>
+
+          <details className="dataset-format-guide">
+            <summary>Accepted dataset formats</summary>
+            <div className="dataset-format-grid">
+              <article>
+                <h4>Best quality format</h4>
+                <p>Include transaction identifier and product name columns.</p>
+                <span>Examples: invoice_no/order_id + description/product_name</span>
+              </article>
+              <article>
+                <h4>Supported fallback format</h4>
+                <p>If invoice/order is missing, include date/time so transaction groups can be inferred.</p>
+                <span>Examples: date/time + product columns</span>
+              </article>
+              <article>
+                <h4>Last-resort fallback</h4>
+                <p>When invoice and date/time are both missing, nearby rows are grouped into synthetic baskets.</p>
+                <span>This works, but results are approximate directional guidance.</span>
+              </article>
+            </div>
+            <p className="dataset-note">
+              Recognized product column aliases include: description, product, product_name, item, itemname, coffee_name, sku.
+            </p>
+          </details>
         </div>
 
         <div className="upload-row action-row">
@@ -917,6 +1034,207 @@ function Dashboard({
                 </ResponsiveContainer>
               </article>
             </div>
+
+            <article className="surface-card rule-explorer-card">
+              <div className="rule-explorer-header">
+                <div>
+                  <h2>Rule Explorer</h2>
+                  <p>Search, sort, and inspect association rules with detailed confidence context.</p>
+                </div>
+              </div>
+
+              <div className="rule-explorer-toolbar">
+                <label className="rule-search-input" htmlFor="rule-search">
+                  <FiSearch />
+                  <input
+                    id="rule-search"
+                    type="text"
+                    value={ruleSearchText}
+                    onChange={(event) => setRuleSearchText(event.target.value)}
+                    placeholder="Search by antecedent or consequent"
+                  />
+                </label>
+
+                <div className="rule-scope-chips" role="tablist" aria-label="Rule search scope">
+                  <button
+                    type="button"
+                    className={`scope-chip ${ruleSearchScope === "all" ? "active" : ""}`}
+                    onClick={() => setRuleSearchScope("all")}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className={`scope-chip ${ruleSearchScope === "antecedent" ? "active" : ""}`}
+                    onClick={() => setRuleSearchScope("antecedent")}
+                  >
+                    Antecedent
+                  </button>
+                  <button
+                    type="button"
+                    className={`scope-chip ${ruleSearchScope === "consequent" ? "active" : ""}`}
+                    onClick={() => setRuleSearchScope("consequent")}
+                  >
+                    Consequent
+                  </button>
+                </div>
+
+                <div className="rule-controls-row">
+                  <label>
+                    Sort by
+                    <select value={ruleSortMetric} onChange={(event) => setRuleSortMetric(event.target.value as RuleSortMetric)}>
+                      <option value="lift">Lift</option>
+                      <option value="confidence">Confidence</option>
+                      <option value="support">Support</option>
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="scope-chip"
+                    onClick={() => setRuleSortDirection((prev) => (prev === "desc" ? "asc" : "desc"))}
+                  >
+                    {ruleSortDirection === "desc" ? <FiArrowDown /> : <FiArrowUp />} {ruleSortDirection.toUpperCase()}
+                  </button>
+
+                  <label>
+                    Rows
+                    <select value={rulePageSize} onChange={(event) => setRulePageSize(Number(event.target.value))}>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              {filteredRules.length === 0 ? (
+                <div className="rule-empty-state">
+                  <h3>No rules available for this profile</h3>
+                  <p>Try Broad preset or reduce support/confidence thresholds to discover more rule candidates.</p>
+                </div>
+              ) : searchedRules.length === 0 ? (
+                <div className="rule-empty-state">
+                  <h3>No matches for your search</h3>
+                  <p>Try a different product keyword or switch search scope.</p>
+                </div>
+              ) : (
+                <div className="rule-explorer-layout">
+                  <section className="rule-table-panel">
+                    <div className="rule-table-wrap">
+                      <table className="data-table rule-data-table">
+                        <thead>
+                          <tr>
+                            <th>Antecedent</th>
+                            <th>Consequent</th>
+                            <th>Support</th>
+                            <th>Confidence</th>
+                            <th>Lift</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pagedRules.map((rule) => {
+                            const isSelected = selectedRuleKey === getRuleKey(rule);
+                            return (
+                              <tr
+                                key={getRuleKey(rule)}
+                                className={isSelected ? "selected" : ""}
+                                onClick={() => setSelectedRuleKey(getRuleKey(rule))}
+                              >
+                                <td>{rule.antecedent}</td>
+                                <td>{rule.consequent}</td>
+                                <td>{rule.support.toFixed(3)}</td>
+                                <td>{rule.confidence.toFixed(3)}</td>
+                                <td>{rule.lift.toFixed(3)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="rule-pagination">
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => setRulePage((prev) => Math.max(1, prev - 1))}
+                        disabled={rulePage <= 1}
+                      >
+                        <FiChevronLeft /> Prev
+                      </button>
+                      <p>
+                        Page <strong>{rulePage}</strong> of <strong>{totalRulePages}</strong>
+                      </p>
+                      <button
+                        type="button"
+                        className="ghost-btn"
+                        onClick={() => setRulePage((prev) => Math.min(totalRulePages, prev + 1))}
+                        disabled={rulePage >= totalRulePages}
+                      >
+                        Next <FiChevronRight />
+                      </button>
+                    </div>
+                  </section>
+
+                  <aside className="rule-detail-panel">
+                    {selectedRule ? (
+                      <>
+                        <h3>Rule Details</h3>
+                        <div className="rule-detail-metrics">
+                          <p>
+                            <span>Antecedent</span>
+                            <strong>{selectedRule.antecedent}</strong>
+                          </p>
+                          <p>
+                            <span>Consequent</span>
+                            <strong>{selectedRule.consequent}</strong>
+                          </p>
+                          <p>
+                            <span>Support</span>
+                            <strong>{selectedRule.support.toFixed(4)}</strong>
+                          </p>
+                          <p>
+                            <span>Confidence</span>
+                            <strong>{selectedRule.confidence.toFixed(4)}</strong>
+                          </p>
+                          <p>
+                            <span>Confidence Band</span>
+                            <strong>{getConfidenceBand(selectedRule.confidence)}</strong>
+                          </p>
+                          <p>
+                            <span>Lift</span>
+                            <strong>{selectedRule.lift.toFixed(4)}</strong>
+                          </p>
+                        </div>
+
+                        <div className="related-rules-block">
+                          <h4>Related Rules</h4>
+                          {relatedRules.length === 0 ? (
+                            <p className="muted-text">No related rules for this selection.</p>
+                          ) : (
+                            <ul>
+                              {relatedRules.map((rule) => (
+                                <li key={getRuleKey(rule)}>
+                                  <p>
+                                    {rule.antecedent} → {rule.consequent}
+                                  </p>
+                                  <span>Conf {rule.confidence.toFixed(3)} • Lift {rule.lift.toFixed(3)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rule-empty-state detail-empty">
+                        <h3>Select a rule</h3>
+                        <p>Click any rule row to inspect detailed metrics and related rules.</p>
+                      </div>
+                    )}
+                  </aside>
+                </div>
+              )}
+            </article>
           </section>
 
           <section className="workspace-stage surface-card">

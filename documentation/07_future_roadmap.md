@@ -76,6 +76,8 @@ Acceptance criteria:
 
 ### 2.4 Rule Exploration UX
 
+Status: Completed
+
 Goal: Upgrade rules table from static to exploratory.
 
 Scope:

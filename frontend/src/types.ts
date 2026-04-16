@@ -38,6 +38,7 @@ export type AnalysisResult = {
     message: string;
   };
   usedSyntheticTransactions?: boolean;
+  transactionInferenceMode?: "native" | "datetime-window" | "row-bucket" | string;
 };
 
 export type MiningAlgorithm = "apriori" | "fpgrowth";

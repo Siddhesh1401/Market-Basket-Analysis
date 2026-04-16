@@ -7,6 +7,12 @@ import traceback
 app = Flask(__name__)
 CORS(app)
 
+DATASET_ACCEPTANCE_HINT = (
+    "Accepted CSV needs at least one product/item column (for example: description, product_name, item, sku). "
+    "Best quality comes from invoice/order + item columns. If invoice/order is missing, the app infers transactions "
+    "from date/time or row buckets and marks results as approximate guidance."
+)
+
 # Initialize recommender
 recommender = Recommender()
 
@@ -69,13 +75,15 @@ def analyze_uploaded_csv():
             'alert': result.get('suitability', {}).get('message', 'Dataset analyzed successfully.')
         }), 200
     except ValueError as exc:
+        reason = str(exc)
         return jsonify({
-            'error': str(exc),
+            'error': reason,
             'suitability': {
                 'isSuitable': False,
-                'message': str(exc)
+                'message': reason
             },
-            'alert': f"Dataset not suitable for mining: {exc}"
+            'acceptedFormatHint': DATASET_ACCEPTANCE_HINT,
+            'alert': f"Dataset not suitable for mining: {reason}. {DATASET_ACCEPTANCE_HINT}"
         }), 400
     except Exception as exc:
         return jsonify({'error': str(exc)}), 500

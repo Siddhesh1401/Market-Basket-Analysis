@@ -4,6 +4,13 @@
 
 The live analyzer accepts CSV text and tries to detect columns by flexible names.
 
+Important:
+
+- The analyzer cannot use completely arbitrary CSV schemas because market-basket mining needs product-level transaction structure.
+- At minimum, a product/item column must exist.
+- Best quality requires real invoice/order transaction IDs.
+- If invoice/order is missing, the analyzer now falls back to date/time inference or row-bucket inference and marks results as approximate.
+
 Required (logical):
 
 - Invoice/transaction identifier OR inferable date/time columns

@@ -1070,6 +1070,66 @@ button.preset-chip:hover {
   padding: 0.28rem 0.6rem;
 }
 
+.dataset-format-guide {
+  margin-top: 0.75rem;
+  border: 1px solid #dbe7ff;
+  border-radius: 12px;
+  background: #fcfdff;
+  padding: 0.62rem 0.72rem;
+  text-align: left;
+}
+
+.dataset-format-guide summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.dataset-format-guide summary::-webkit-details-marker {
+  display: none;
+}
+
+.dataset-format-grid {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.dataset-format-grid article {
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 0.58rem;
+}
+
+.dataset-format-grid h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+}
+
+.dataset-format-grid p {
+  margin: 0.32rem 0 0;
+  color: #334155;
+  font-size: 0.82rem;
+}
+
+.dataset-format-grid span {
+  display: inline-block;
+  margin-top: 0.35rem;
+  color: #0369a1;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.dataset-note {
+  margin: 0.55rem 0 0;
+  color: #475569;
+  font-size: 0.8rem;
+}
+
 .upload-row {
   display: flex;
   gap: 0.6rem;
@@ -1419,6 +1479,242 @@ button.preset-chip:hover {
   gap: 1rem;
 }
 
+.rule-explorer-card {
+  margin-top: 1rem;
+}
+
+.rule-explorer-header p {
+  margin: 0.25rem 0 0;
+  color: #64748b;
+}
+
+.rule-explorer-toolbar {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.rule-search-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.45rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rule-search-input svg {
+  color: #475569;
+}
+
+.rule-search-input input {
+  border: none;
+  outline: none;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+.rule-scope-chips {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.scope-chip {
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  border-radius: 999px;
+  padding: 0.34rem 0.62rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.scope-chip.active {
+  background: linear-gradient(90deg, #4f46e5, #3b82f6);
+  color: #fff;
+  border-color: transparent;
+}
+
+.rule-controls-row {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rule-controls-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #334155;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.rule-controls-row select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.35rem 0.45rem;
+}
+
+.rule-explorer-layout {
+  margin-top: 0.8rem;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 1.45fr 1fr;
+}
+
+.rule-table-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: #fff;
+}
+
+.rule-table-wrap {
+  overflow-x: auto;
+}
+
+.rule-data-table {
+  min-width: 620px;
+}
+
+.rule-data-table tbody tr {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.rule-data-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.rule-data-table tbody tr.selected {
+  background: #eef2ff;
+}
+
+.rule-pagination {
+  margin-top: 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rule-pagination p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.86rem;
+}
+
+.rule-detail-panel {
+  border: 1px solid #dbe7ff;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 0.7rem;
+}
+
+.rule-detail-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.rule-detail-metrics {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.rule-detail-metrics p {
+  margin: 0;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.5rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.rule-detail-metrics span {
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.rule-detail-metrics strong {
+  color: #0f172a;
+  font-size: 0.92rem;
+}
+
+.related-rules-block {
+  margin-top: 0.7rem;
+}
+
+.related-rules-block h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+}
+
+.related-rules-block ul {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.related-rules-block li {
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.5rem;
+}
+
+.related-rules-block li p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #1e293b;
+}
+
+.related-rules-block li span {
+  display: inline-block;
+  margin-top: 0.28rem;
+  font-size: 0.76rem;
+  color: #475569;
+}
+
+.rule-empty-state {
+  margin-top: 0.8rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  text-align: center;
+  padding: 0.9rem;
+}
+
+.rule-empty-state h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #1e293b;
+}
+
+.rule-empty-state p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.detail-empty {
+  margin-top: 0;
+}
+
 .recommend-row {
   display: flex;
   gap: 0.7rem;
@@ -1618,6 +1914,14 @@ button.preset-chip:hover {
 
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
+
+  .rule-explorer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rule-table-panel {
+    overflow: hidden;
   }
 }
 

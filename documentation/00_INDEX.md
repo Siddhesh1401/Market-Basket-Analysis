@@ -32,6 +32,7 @@ This documentation set replaces the previous planning-heavy docs and now describ
 | `phases/phase_2_1.md` | Simple summary and test checklist for Phase 2.1 |
 | `phases/phase_2_2.md` | Simple summary and test checklist for Phase 2.2 |
 | `phases/phase_2_3.md` | Simple summary and test checklist for Phase 2.3 |
+| `phases/phase_2_4.md` | Simple summary and test checklist for Phase 2.4 |
 
 ---
 

@@ -138,6 +138,14 @@ def _build_synthetic_invoice_ids(df: pd.DataFrame, date_col: str | None, time_co
     return synthetic_ids
 
 
+def _build_row_bucket_invoice_ids(df: pd.DataFrame, bucket_size: int = 3) -> pd.Series:
+    """Fallback synthetic transaction IDs using contiguous row buckets."""
+    bucket_size = max(2, int(bucket_size))
+    row_positions = pd.Series(range(len(df)), index=df.index, dtype="int64")
+    bucket_ids = (row_positions // bucket_size).astype(str).str.zfill(7)
+    return "SYN-BKT-" + bucket_ids
+
+
 def analyze_csv_text(
     csv_text: str,
     algorithm: str = "fpgrowth",
@@ -166,12 +174,14 @@ def analyze_csv_text(
         raise ValueError("Required column missing: item/product.")
 
     used_synthetic_transactions = False
+    inference_mode = "native"
     if invoice_col is None:
         synthetic_ids = _build_synthetic_invoice_ids(df, date_col, time_col)
         if synthetic_ids is None:
-            raise ValueError(
-                "Required columns missing: invoice/order, and no usable date/time columns were found to infer transactions."
-            )
+            synthetic_ids = _build_row_bucket_invoice_ids(df, bucket_size=3)
+            inference_mode = "row-bucket"
+        else:
+            inference_mode = "datetime-window"
         invoice_col = "__synthetic_invoice_id"
         df[invoice_col] = synthetic_ids
         used_synthetic_transactions = True
@@ -361,6 +371,20 @@ def analyze_csv_text(
         for index, month_name in enumerate(MONTH_NAMES)
     ]
 
+    if inference_mode == "native":
+        suitability_message = f"Dataset cleaned and suitable for {algorithm.upper()} mining."
+    elif inference_mode == "datetime-window":
+        suitability_message = (
+            f"Dataset cleaned and suitable for {algorithm.upper()} mining "
+            "(using inferred transaction IDs from date/time windows)."
+        )
+    else:
+        suitability_message = (
+            f"Dataset cleaned and suitable for {algorithm.upper()} mining "
+            "(using fallback row-bucket transaction IDs because invoice/order and date/time columns were missing). "
+            "Treat these rules as directional guidance."
+        )
+
     return {
         "totalRows": int(len(working)),
         "totalTransactions": total_transactions,
@@ -384,11 +408,8 @@ def analyze_csv_text(
         },
         "suitability": {
             "isSuitable": True,
-            "message": (
-                f"Dataset cleaned and suitable for {algorithm.upper()} mining."
-                if not used_synthetic_transactions
-                else f"Dataset cleaned and suitable for {algorithm.upper()} mining (using inferred transaction IDs)."
-            ),
+            "message": suitability_message,
         },
         "usedSyntheticTransactions": used_synthetic_transactions,
+        "transactionInferenceMode": inference_mode,
     }
