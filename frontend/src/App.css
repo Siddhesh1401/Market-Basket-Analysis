@@ -1285,6 +1285,102 @@ button.preset-chip:hover {
   gap: 0.8rem;
 }
 
+.suitability-banner {
+  margin-top: 0.6rem;
+  border-width: 1px;
+}
+
+.suitability-banner h3 {
+  margin: 0;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.suitability-banner p {
+  margin: 0.35rem 0 0;
+  color: #334155;
+}
+
+.suitability-banner.ok {
+  border-color: #86efac;
+  background: linear-gradient(180deg, #f0fdf4, #f8fffa);
+}
+
+.suitability-banner.ok h3 {
+  color: #166534;
+}
+
+.suitability-banner.warning {
+  border-color: #fcd34d;
+  background: linear-gradient(180deg, #fffbeb, #fffef7);
+}
+
+.suitability-banner.warning h3 {
+  color: #92400e;
+}
+
+.diagnostics-card {
+  margin-top: 0.9rem;
+}
+
+.diagnostics-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.diagnostics-grid {
+  margin-top: 0.7rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.55rem;
+}
+
+.diagnostic-metric {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.diagnostic-metric span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.diagnostic-metric strong {
+  color: #0f172a;
+  font-size: 0.98rem;
+}
+
+.diagnostic-reco {
+  margin-top: 0.8rem;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 0.62rem;
+}
+
+.diagnostic-reco h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #1e3a8a;
+}
+
+.diagnostic-reco ul {
+  margin: 0.45rem 0 0;
+  padding-left: 1rem;
+  color: #334155;
+}
+
+.diagnostic-reco li {
+  margin: 0.3rem 0;
+}
+
 .kpi-card {
   padding: 0.95rem;
 }

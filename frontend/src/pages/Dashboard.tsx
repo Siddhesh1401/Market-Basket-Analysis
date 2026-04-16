@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import {
   FiActivity,
+  FiAlertTriangle,
   FiCpu,
   FiCheckCircle,
   FiDatabase,
@@ -164,6 +165,37 @@ function Dashboard({
         rule.lift >= appliedParams.minLift,
     );
   }, [analysis, appliedParams.minConfidence, appliedParams.minLift, appliedParams.minSupport]);
+
+  const diagnostics = useMemo(() => {
+    if (!analysis?.preprocessing) {
+      return null;
+    }
+
+    const prep = analysis.preprocessing;
+    const droppedRate = prep.rawRows > 0 ? prep.droppedRows / prep.rawRows : 0;
+
+    const recommendations: string[] = [];
+    if (droppedRate > 0.35) {
+      recommendations.push("High row drop rate detected. Check invoice and product columns for missing values.");
+    }
+    if (prep.removedCancelledInvoices > 0) {
+      recommendations.push("Cancelled invoices were removed. This is expected for cleaner purchase behavior.");
+    }
+    if (prep.removedNoiseItems > 0) {
+      recommendations.push("Service/noise items were removed. Consider checking raw data labels if counts are unexpectedly high.");
+    }
+    if ((analysis.rules?.length ?? 0) === 0) {
+      recommendations.push("No rules generated. Try the Broad preset or lower support/confidence thresholds.");
+    }
+    if (analysis.usedSyntheticTransactions) {
+      recommendations.push("Transaction IDs were inferred from date/time windows. Add invoice/order IDs for strongest rule quality.");
+    }
+
+    return {
+      droppedRate,
+      recommendations,
+    };
+  }, [analysis]);
 
   const hasPendingChanges = useMemo(
     () =>
@@ -760,8 +792,65 @@ function Dashboard({
             <div className="stage-head stage-head-slim">
               <p className="stage-kicker">Step 3</p>
               <h2>Analyze Result Snapshot</h2>
-              <p>Confirm mining quality with core volume and coverage indicators.</p>
+              <p>Confirm mining quality and review preprocessing diagnostics before interpreting rules.</p>
             </div>
+
+            <article className={`surface-card suitability-banner ${analysis.suitability?.isSuitable === false ? "warning" : "ok"}`}>
+              <div>
+                <h3>
+                  {analysis.suitability?.isSuitable === false ? <FiAlertTriangle /> : <FiCheckCircle />} Suitability Status
+                </h3>
+                <p>{analysis.suitability?.message ?? "Dataset processed successfully."}</p>
+              </div>
+            </article>
+
+            {analysis.preprocessing && diagnostics && (
+              <article className="surface-card diagnostics-card">
+                <h3>Data Cleaning Impact</h3>
+                <div className="diagnostics-grid">
+                  <div className="diagnostic-metric">
+                    <span>Raw Rows</span>
+                    <strong>{analysis.preprocessing.rawRows.toLocaleString()}</strong>
+                  </div>
+                  <div className="diagnostic-metric">
+                    <span>Cleaned Rows</span>
+                    <strong>{analysis.preprocessing.cleanedRows.toLocaleString()}</strong>
+                  </div>
+                  <div className="diagnostic-metric">
+                    <span>Dropped Rows</span>
+                    <strong>
+                      {analysis.preprocessing.droppedRows.toLocaleString()} ({(diagnostics.droppedRate * 100).toFixed(1)}%)
+                    </strong>
+                  </div>
+                  <div className="diagnostic-metric">
+                    <span>Removed Cancelled</span>
+                    <strong>{analysis.preprocessing.removedCancelledInvoices.toLocaleString()}</strong>
+                  </div>
+                  <div className="diagnostic-metric">
+                    <span>Removed Noise Items</span>
+                    <strong>{analysis.preprocessing.removedNoiseItems.toLocaleString()}</strong>
+                  </div>
+                  <div className="diagnostic-metric">
+                    <span>Invalid Qty/Price Removed</span>
+                    <strong>
+                      {(analysis.preprocessing.removedNonPositiveQuantity + analysis.preprocessing.removedNonPositivePrice).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {diagnostics.recommendations.length > 0 && (
+                  <div className="diagnostic-reco">
+                    <h4>Actionable Notes</h4>
+                    <ul>
+                      {diagnostics.recommendations.map((note, index) => (
+                        <li key={`${note}-${index}`}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </article>
+            )}
+
             <div className="kpi-grid">
               <article className="kpi-card">
                 <p>Total Transactions</p>

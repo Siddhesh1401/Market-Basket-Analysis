@@ -24,6 +24,20 @@ export type AnalysisResult = {
   heatmapMatrix: number[][];
   monthlyTransactions: Array<{ month: string; transactions: number }>;
   countryDistribution: Array<{ name: string; value: number }>;
+  preprocessing?: {
+    rawRows: number;
+    cleanedRows: number;
+    droppedRows: number;
+    removedCancelledInvoices: number;
+    removedNoiseItems: number;
+    removedNonPositiveQuantity: number;
+    removedNonPositivePrice: number;
+  };
+  suitability?: {
+    isSuitable: boolean;
+    message: string;
+  };
+  usedSyntheticTransactions?: boolean;
 };
 
 export type MiningAlgorithm = "apriori" | "fpgrowth";

@@ -58,6 +58,8 @@ Acceptance criteria:
 
 ### 2.3 Preprocessing and Data Quality Diagnostics
 
+Status: Completed
+
 Goal: Surface backend preprocessing diagnostics in UI.
 
 Scope:
