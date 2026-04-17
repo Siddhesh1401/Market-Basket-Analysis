@@ -15,6 +15,64 @@ DATASET_ACCEPTANCE_HINT = (
 
 # Initialize recommender
 recommender = Recommender()
+ACTIVE_ANALYSIS_CONTEXT = {
+    'products': [],
+    'rules': [],
+    'algorithm': None,
+    'ready': False,
+}
+
+
+def _split_items(value: str) -> list[str]:
+    return [part.strip() for part in str(value).split(',') if part and part.strip()]
+
+
+def _recommend_from_rules(cart_items: list[str], rules: list[dict], top_n: int) -> list[dict]:
+    normalized_cart = {str(item).strip().lower() for item in cart_items if str(item).strip()}
+    if not normalized_cart or not rules:
+        return []
+
+    candidate_scores = {}
+
+    for rule in rules:
+        antecedents = _split_items(rule.get('antecedent', ''))
+        consequents = _split_items(rule.get('consequent', ''))
+        if not antecedents or not consequents:
+            continue
+
+        antecedent_set = {item.lower() for item in antecedents}
+        if not antecedent_set.issubset(normalized_cart):
+            continue
+
+        confidence = float(rule.get('confidence', 0.0) or 0.0)
+        lift = float(rule.get('lift', 1.0) or 1.0)
+        support = float(rule.get('support', 0.0) or 0.0)
+
+        for consequent in consequents:
+            if consequent.lower() in normalized_cart:
+                continue
+
+            existing = candidate_scores.get(consequent.lower())
+            candidate = {
+                'product': consequent,
+                'confidence': confidence,
+                'lift': lift,
+                'support': support,
+            }
+
+            if existing is None or (candidate['confidence'], candidate['lift'], candidate['support']) > (
+                existing['confidence'],
+                existing['lift'],
+                existing['support'],
+            ):
+                candidate_scores[consequent.lower()] = candidate
+
+    ranked = sorted(
+        candidate_scores.values(),
+        key=lambda row: (row['confidence'], row['lift'], row['support']),
+        reverse=True,
+    )
+    return ranked[: max(1, int(top_n))]
 
 # ==================== HEALTH CHECK ====================
 @app.route('/', methods=['GET'])
@@ -49,6 +107,11 @@ def health():
 def analyze_uploaded_csv():
     """Run association mining directly on uploaded CSV text"""
     try:
+        ACTIVE_ANALYSIS_CONTEXT['products'] = []
+        ACTIVE_ANALYSIS_CONTEXT['rules'] = []
+        ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['ready'] = False
+
         data = request.json or {}
         csv_text = data.get('csv_text', '')
         algorithm = str(data.get('algorithm', 'fpgrowth')).strip().lower()
@@ -69,6 +132,11 @@ def analyze_uploaded_csv():
             top_n=top_n,
         )
 
+        ACTIVE_ANALYSIS_CONTEXT['products'] = result.get('productCatalog', [])
+        ACTIVE_ANALYSIS_CONTEXT['rules'] = result.get('rules', [])
+        ACTIVE_ANALYSIS_CONTEXT['algorithm'] = algorithm
+        ACTIVE_ANALYSIS_CONTEXT['ready'] = True
+
         return jsonify({
             'analysis': result,
             'algorithm': algorithm,
@@ -76,6 +144,10 @@ def analyze_uploaded_csv():
         }), 200
     except ValueError as exc:
         reason = str(exc)
+        ACTIVE_ANALYSIS_CONTEXT['products'] = []
+        ACTIVE_ANALYSIS_CONTEXT['rules'] = []
+        ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({
             'error': reason,
             'suitability': {
@@ -86,6 +158,10 @@ def analyze_uploaded_csv():
             'alert': f"Dataset not suitable for mining: {reason}. {DATASET_ACCEPTANCE_HINT}"
         }), 400
     except Exception as exc:
+        ACTIVE_ANALYSIS_CONTEXT['products'] = []
+        ACTIVE_ANALYSIS_CONTEXT['rules'] = []
+        ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({'error': str(exc)}), 500
 
 # ==================== RECOMMENDATIONS ====================
@@ -93,16 +169,24 @@ def analyze_uploaded_csv():
 def get_recommendations():
     """Get product recommendations based on cart items"""
     try:
-        data = request.json
+        data = request.json or {}
         cart_items = data.get('items', [])
-        algorithm = data.get('algorithm', 'apriori')
         top_n = data.get('top_n', 5)
 
         if not cart_items:
             return jsonify({'recommendations': []}), 200
 
-        recommendations = recommender.get_recommendations(cart_items, algorithm, top_n)
-        return jsonify({'recommendations': recommendations}), 200
+        if not ACTIVE_ANALYSIS_CONTEXT['ready']:
+            return jsonify({
+                'error': 'Upload and analyze a dataset in Workspace first. Recommendations are generated only from your uploaded data.'
+            }), 400
+
+        recommendations = _recommend_from_rules(cart_items, ACTIVE_ANALYSIS_CONTEXT['rules'], top_n)
+        return jsonify({
+            'recommendations': recommendations,
+            'source': 'uploaded-analysis-rules',
+            'algorithm': ACTIVE_ANALYSIS_CONTEXT['algorithm'],
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -188,11 +272,18 @@ def get_model_status():
 def get_products():
     """Get all available products"""
     try:
-        if recommender.df is None:
-            return jsonify({'products': []}), 200
+        if not ACTIVE_ANALYSIS_CONTEXT['ready']:
+            return jsonify({
+                'products': [],
+                'ready': False,
+                'message': 'Upload and analyze a dataset in Workspace to load products.',
+            }), 200
 
-        products = recommender.df['Description'].unique().tolist()[:100]  # Top 100 products
-        return jsonify({'products': products}), 200
+        return jsonify({
+            'products': ACTIVE_ANALYSIS_CONTEXT['products'],
+            'ready': True,
+            'source': 'uploaded-dataset',
+        }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

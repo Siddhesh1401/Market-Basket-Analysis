@@ -6,6 +6,13 @@ export type Rule = {
   lift: number;
 };
 
+export type Recommendation = {
+  product: string;
+  support: number;
+  confidence: number;
+  lift: number;
+};
+
 export type Itemset = {
   items: string;
   count: number;
@@ -20,6 +27,7 @@ export type AnalysisResult = {
   topItemsets: Itemset[];
   rules: Rule[];
   itemFrequency: Array<{ item: string; count: number }>;
+  productCatalog?: string[];
   heatmapItems: string[];
   heatmapMatrix: number[][];
   monthlyTransactions: Array<{ month: string; transactions: number }>;

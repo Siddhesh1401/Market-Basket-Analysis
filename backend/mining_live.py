@@ -371,6 +371,14 @@ def analyze_csv_text(
         for index, month_name in enumerate(MONTH_NAMES)
     ]
 
+    product_catalog = sorted(
+        {
+            str(value).strip()
+            for value in working[item_col].dropna().tolist()
+            if str(value).strip()
+        }
+    )
+
     if inference_mode == "native":
         suitability_message = f"Dataset cleaned and suitable for {algorithm.upper()} mining."
     elif inference_mode == "datetime-window":
@@ -393,6 +401,7 @@ def analyze_csv_text(
         "topItemsets": top_itemsets,
         "rules": rules,
         "itemFrequency": item_frequency,
+        "productCatalog": product_catalog,
         "heatmapItems": heatmap_items,
         "heatmapMatrix": heatmap_matrix,
         "monthlyTransactions": monthly_transactions,

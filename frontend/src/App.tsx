@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router-do
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
+import BasketSimulator from "./pages/BasketSimulator";
 import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "./types";
 import "./App.css";
 
@@ -11,6 +12,7 @@ function AppShell() {
   const [fileSize, setFileSize] = useState<number | null>(null);
   const [csvText, setCsvText] = useState("");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analysisRunAt, setAnalysisRunAt] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const workspaceStatus = analysis
@@ -53,6 +55,7 @@ function AppShell() {
     setFileSize(null);
     setCsvText("");
     setAnalysis(null);
+    setAnalysisRunAt(null);
     setError("");
   };
 
@@ -89,6 +92,7 @@ function AppShell() {
 
       const body = (await response.json()) as { analysis: AnalysisResult; algorithm: MiningAlgorithm; alert?: string };
       setAnalysis(body.analysis);
+      setAnalysisRunAt(new Date().toISOString());
       setError("");
       if (body.alert) {
         window.alert(body.alert);
@@ -97,6 +101,7 @@ function AppShell() {
       const message = err instanceof Error ? err.message : "Analysis failed.";
       setError(message);
       setAnalysis(null);
+      setAnalysisRunAt(null);
       window.alert(message);
     }
   };
@@ -118,6 +123,9 @@ function AppShell() {
             </NavLink>
             <NavLink to="/reports" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               Reports
+            </NavLink>
+            <NavLink to="/simulator" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              Simulator
             </NavLink>
           </nav>
           <div className="nav-status" aria-live="polite">
@@ -146,6 +154,11 @@ function AppShell() {
             }
           />
           <Route path="/reports" element={<Reports analysis={analysis} />} />
+          <Route
+            path="/simulator"
+            element={<BasketSimulator analysis={analysis} activeFileName={fileName} analyzedAt={analysisRunAt} />}
+          />
+          <Route path="/basket-simulator" element={<Navigate to="/simulator" replace />} />
         </Routes>
       </main>
     </>
