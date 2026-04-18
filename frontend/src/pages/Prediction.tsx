@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { FiBell, FiCopy, FiDownload, FiInfo, FiLoader, FiPlus, FiTarget, FiTrendingUp, FiX } from "react-icons/fi";
+import { FiBell, FiCopy, FiDownload, FiInfo, FiLoader, FiPlus, FiSearch, FiTarget, FiTrendingUp, FiX } from "react-icons/fi";
 import type { AnalysisResult } from "../types";
 
 type PredictionProps = {
   analysis: AnalysisResult | null;
+  datasetLoaded: boolean;
 };
 
 interface PurchasePrediction {
@@ -17,7 +18,7 @@ interface PurchasePrediction {
   risk_factors: string[];
 }
 
-function Prediction({ analysis }: PredictionProps) {
+function Prediction({ analysis, datasetLoaded }: PredictionProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +64,11 @@ function Prediction({ analysis }: PredictionProps) {
 
   const runPrediction = async () => {
     if (!analysis) {
-      setPredictionError("Upload and analyze a dataset in Workspace first.");
+      setPredictionError(
+        datasetLoaded
+          ? "Dataset uploaded, but analysis is not complete yet. Run analysis in Workspace first."
+          : "Upload and analyze a dataset in Workspace first.",
+      );
       setPredictionResult(null);
       setHasRequested(true);
       return;
@@ -99,7 +104,6 @@ function Prediction({ analysis }: PredictionProps) {
       }
 
       const body = (await response.json()) as any;
-      console.log("Prediction response:", body);
       if (body && body.will_buy_high_quantity !== undefined) {
         const likelihood = body.likelihood_percent || Math.round(body.will_buy_high_quantity * 100);
         setPredictionResult({
@@ -191,11 +195,13 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
           </div>
 
           {!analysis && (
-            <article className="sim-card" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
-              <FiInfo style={{ color: "#dc2626", marginBottom: "0.5rem" }} />
-              <p style={{ color: "#dc2626", fontWeight: 700, margin: "0 0 0.3rem" }}>No dataset loaded</p>
-              <p style={{ color: "#991b1b", margin: 0, fontSize: "0.9rem" }}>
-                Upload and analyze a dataset in Workspace first to use predictions.
+            <article className="sim-card blocked-hint-card">
+              <FiInfo className="blocked-hint-icon" />
+              <p className="blocked-hint-title">{datasetLoaded ? "Dataset ready, analysis pending" : "No dataset loaded"}</p>
+              <p className="blocked-hint-text">
+                {datasetLoaded
+                  ? "Run analysis in Workspace to unlock prediction outputs."
+                  : "Upload and analyze a dataset in Workspace first to use predictions."}
               </p>
             </article>
           )}
@@ -235,7 +241,7 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
             <div className="sim-search-section">
               <p className="sim-subsection-title">Search Catalog</p>
               <label className="rule-search-input simulator-search" htmlFor="pred-product-search">
-                <FiX />
+                <FiSearch />
                 <input
                   id="pred-product-search"
                   type="text"

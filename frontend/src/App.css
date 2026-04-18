@@ -1,15 +1,59 @@
 :root {
   --bg: #f5f7fb;
   --surface: #ffffff;
+  --surface-soft: #f8fafc;
+  --surface-alt: #eef2ff;
   --text: #0f172a;
+  --text-strong: #020617;
   --muted: #64748b;
   --line: #e2e8f0;
+  --line-strong: #cbd5e1;
   --primary: #4f46e5;
   --primary-2: #3b82f6;
+  --primary-soft: #eef2ff;
+  --success-bg: #ecfdf5;
+  --success-text: #065f46;
+  --warning-bg: #eff6ff;
+  --warning-text: #1d4ed8;
+  --idle-bg: #f8fafc;
+  --idle-text: #475569;
   --radius: 16px;
   --radius-lg: 20px;
   --shadow-sm: 0 8px 22px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 16px 32px rgba(15, 23, 42, 0.1);
+  --shadow-navbar: 0 8px 24px rgba(15, 23, 42, 0.05);
+  --app-gradient: radial-gradient(circle at top right, #eef3ff 0%, #f8faff 35%, #f5f7fb 70%);
+  --navbar-bg: rgba(255, 255, 255, 0.88);
+  --nav-pill-bg: rgba(255, 255, 255, 0.72);
+  --nav-pill-line: rgba(203, 213, 225, 0.7);
+}
+
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #111a2b;
+  --surface-soft: #162238;
+  --surface-alt: #1b2a46;
+  --text: #dce7ff;
+  --text-strong: #f3f7ff;
+  --muted: #9cb2d8;
+  --line: #26344e;
+  --line-strong: #334666;
+  --primary: #7c8dff;
+  --primary-2: #4f9cff;
+  --primary-soft: #1d2b47;
+  --success-bg: #103227;
+  --success-text: #7ef0c0;
+  --warning-bg: #1e2f4d;
+  --warning-text: #8fbcff;
+  --idle-bg: #1a2740;
+  --idle-text: #b9cae8;
+  --shadow-sm: 0 10px 24px rgba(2, 6, 23, 0.34);
+  --shadow-md: 0 18px 36px rgba(2, 6, 23, 0.45);
+  --shadow-navbar: 0 8px 24px rgba(2, 6, 23, 0.55);
+  --app-gradient: radial-gradient(circle at top right, #1b2a46 0%, #10182c 38%, #0b1220 78%);
+  --navbar-bg: rgba(11, 18, 32, 0.86);
+  --nav-pill-bg: rgba(17, 26, 43, 0.9);
+  --nav-pill-line: rgba(62, 84, 121, 0.7);
 }
 
 * {
@@ -19,17 +63,20 @@
 .app-main {
   min-height: 100vh;
   padding-top: 102px;
-  background: radial-gradient(circle at top right, #eef3ff 0%, #f8faff 35%, #f5f7fb 70%);
+  background: var(--app-gradient);
+  color: var(--text);
+  transition: background 0.25s ease, color 0.25s ease;
 }
 
 .app-navbar {
   position: fixed;
   inset: 0 0 auto;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--navbar-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-navbar);
+  transition: background 0.25s ease, border-color 0.25s ease;
 }
 
 .nav-container {
@@ -55,7 +102,7 @@
 .brand-sub {
   margin: 0;
   font-size: 0.74rem;
-  color: #64748b;
+  color: var(--muted);
   letter-spacing: 0.01em;
 }
 
@@ -63,6 +110,7 @@
   font-size: 1.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--text-strong);
 }
 
 .nav-links {
@@ -70,14 +118,17 @@
   gap: 0.6rem;
   padding: 0.25rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(203, 213, 225, 0.7);
+  background: var(--nav-pill-bg);
+  border: 1px solid var(--nav-pill-line);
 }
 
 .nav-link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   text-decoration: none;
-  color: #334155;
+  color: var(--text);
   font-weight: 600;
   padding: 0.52rem 0.9rem;
   border-radius: 999px;
@@ -86,7 +137,7 @@
 }
 
 .nav-link:hover {
-  color: #1e293b;
+  color: var(--text-strong);
 }
 
 .nav-link::before {
@@ -94,7 +145,7 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: #edf2ff;
+  background: var(--primary-soft);
   transform: scale(0.82);
   opacity: 0;
   transition: 0.25s ease;
@@ -108,14 +159,50 @@
 
 .nav-link.active {
   color: #fff;
-  background: linear-gradient(90deg, #4f46e5, #3b82f6);
+  background: linear-gradient(90deg, var(--primary), var(--primary-2));
   box-shadow: 0 10px 20px rgba(79, 70, 229, 0.34);
   animation: nav-tab-pop 0.28s ease;
+}
+
+.nav-link.pending {
+  border: 1px dashed var(--line-strong);
+  background: color-mix(in srgb, var(--primary-soft) 72%, transparent);
+}
+
+.nav-link-locked {
+  cursor: not-allowed;
+  border: 1px dashed var(--line-strong);
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-soft) 84%, transparent);
+}
+
+.nav-link-locked::before {
+  display: none;
 }
 
 .nav-status {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-toggle-btn {
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.34rem 0.64rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-1px);
+  background: var(--surface-soft);
 }
 
 .status-pill {
@@ -127,20 +214,20 @@
 }
 
 .status-pill.ready {
-  color: #065f46;
-  background: #ecfdf5;
+  color: var(--success-text);
+  background: var(--success-bg);
   border-color: #a7f3d0;
 }
 
 .status-pill.pending {
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: var(--warning-text);
+  background: var(--warning-bg);
   border-color: #bfdbfe;
 }
 
 .status-pill.idle {
-  color: #475569;
-  background: #f8fafc;
+  color: var(--idle-text);
+  background: var(--idle-bg);
   border-color: #e2e8f0;
 }
 
@@ -2660,8 +2747,15 @@ button.preset-chip:hover {
     height: 78px;
   }
 
-  .brand-sub,
+  .brand-sub {
+    display: none;
+  }
+
   .nav-status {
+    display: flex;
+  }
+
+  .status-pill {
     display: none;
   }
 
@@ -3197,4 +3291,660 @@ button.preset-chip:hover {
 .pred-action-btn:hover {
   background: #bfdbfe;
   transform: translateY(-1px);
+}
+
+/* ============ PLATFORM FLOW + PAGE GUIDANCE ============ */
+
+.page-context-bar {
+  width: min(1160px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 0.2rem;
+}
+
+.page-context-inner {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.85rem 1rem;
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 1rem;
+}
+
+.page-context-copy h2 {
+  margin: 0.2rem 0 0;
+  color: var(--text-strong);
+  font-size: 1.08rem;
+}
+
+.page-context-copy p {
+  margin: 0.4rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.page-context-eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.page-context-details {
+  border-left: 1px dashed var(--line-strong);
+  padding-left: 1rem;
+}
+
+.page-context-requirement {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.page-context-details ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  color: var(--muted);
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.86rem;
+}
+
+.locked-feature-card {
+  margin-top: 1rem;
+  border-style: dashed;
+}
+
+.locked-feature-card h2 {
+  color: var(--text-strong);
+}
+
+.locked-feature-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.home-hero-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-status-strip {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.home-status-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.85rem;
+}
+
+.home-status-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.home-status-card h3 {
+  margin: 0.25rem 0 0;
+  color: var(--text-strong);
+  font-size: 1.1rem;
+}
+
+.home-status-badge {
+  margin-top: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  padding: 0.24rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.home-status-badge.ready {
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.home-status-badge.pending {
+  color: var(--warning-text);
+  background: var(--warning-bg);
+}
+
+.home-status-badge.locked {
+  color: var(--idle-text);
+  background: var(--idle-bg);
+}
+
+.home-workflow-card {
+  margin-top: 1rem;
+}
+
+.home-workflow-subtitle {
+  margin: -0.4rem 0 0.8rem;
+  color: var(--muted);
+}
+
+.home-workflow-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.home-workflow-step {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 0.8rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.home-workflow-step h3 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 0.98rem;
+}
+
+.home-workflow-step p {
+  margin: 0.18rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.home-workflow-step.complete {
+  border-color: color-mix(in srgb, var(--success-text) 35%, var(--line));
+}
+
+.home-workflow-index {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.home-workflow-state {
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  padding: 0.25rem 0.62rem;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.home-workflow-step.complete .home-workflow-state {
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.home-module-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.home-module-card {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.home-module-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.home-module-status {
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  padding: 0.2rem 0.56rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.home-module-status.ready {
+  color: var(--success-text);
+  background: var(--success-bg);
+}
+
+.home-module-status.pending {
+  color: var(--warning-text);
+  background: var(--warning-bg);
+}
+
+.home-module-status.locked {
+  color: var(--idle-text);
+  background: var(--idle-bg);
+}
+
+.home-module-card.locked {
+  opacity: 0.86;
+}
+
+.blocked-hint-card {
+  background: color-mix(in srgb, #fef2f2 84%, var(--surface));
+  border-color: color-mix(in srgb, #fecaca 70%, var(--line));
+}
+
+.blocked-hint-icon {
+  color: #dc2626;
+  margin-bottom: 0.45rem;
+}
+
+.blocked-hint-title {
+  color: #b91c1c;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+
+.blocked-hint-text {
+  color: #7f1d1d;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.analyzer-grid-v2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ============ DARK THEME TARGETED OVERRIDES ============ */
+
+[data-theme="dark"] .hero-card,
+[data-theme="dark"] .hero-mini,
+[data-theme="dark"] .surface-card,
+[data-theme="dark"] .feature-tile,
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .sim-card,
+[data-theme="dark"] .pred-next-products,
+[data-theme="dark"] .pred-explanation,
+[data-theme="dark"] .pred-likelihood-card,
+[data-theme="dark"] .seg-card,
+[data-theme="dark"] .seg-info-block,
+[data-theme="dark"] .seg-info-block-strategy,
+[data-theme="dark"] .timeline-item,
+[data-theme="dark"] .workflow-step {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .hero-visual,
+[data-theme="dark"] .dashboard-hero-art {
+  background: linear-gradient(135deg, #1b2a46, #15233a);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .hero-panel,
+[data-theme="dark"] .hero-chip,
+[data-theme="dark"] .panel-sub,
+[data-theme="dark"] .panel-label {
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  color: var(--muted);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .hero-panel h4,
+[data-theme="dark"] .surface-card h2,
+[data-theme="dark"] .feature-tile h3,
+[data-theme="dark"] .stage-head h2,
+[data-theme="dark"] .pred-product-name,
+[data-theme="dark"] .seg-result-header h2,
+[data-theme="dark"] .timeline-item h4 {
+  color: var(--text-strong);
+}
+
+[data-theme="dark"] .feature-tile p,
+[data-theme="dark"] .timeline-item p,
+[data-theme="dark"] .check-list li,
+[data-theme="dark"] .sim-card-label,
+[data-theme="dark"] .sim-card-hint,
+[data-theme="dark"] .seg-card-hint,
+[data-theme="dark"] .seg-info-text,
+[data-theme="dark"] .pred-explanation-text,
+[data-theme="dark"] .pred-risk-list,
+[data-theme="dark"] .muted-text,
+[data-theme="dark"] .chart-empty-state p,
+[data-theme="dark"] .table-empty-cell,
+[data-theme="dark"] .data-table td {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .data-table th,
+[data-theme="dark"] .data-table td {
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .rule-search-input,
+[data-theme="dark"] .product-pill,
+[data-theme="dark"] .starter-template-chip,
+[data-theme="dark"] .basket-chip,
+[data-theme="dark"] .seg-radio,
+[data-theme="dark"] .pred-product-row,
+[data-theme="dark"] .pred-risk-factors,
+[data-theme="dark"] .sim-empty-state,
+[data-theme="dark"] .sim-error-state,
+[data-theme="dark"] .status-chip,
+[data-theme="dark"] .theme-toggle-btn,
+[data-theme="dark"] .workflow-step-index,
+[data-theme="dark"] .home-workflow-state {
+  background: var(--surface-soft);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+[data-theme="dark"] .seg-radio input:checked + span {
+  color: #9cbcff;
+}
+
+[data-theme="dark"] .seg-radio span {
+  color: #dce7ff;
+}
+
+[data-theme="dark"] .seg-radio:hover span {
+  color: #f3f7ff;
+}
+
+[data-theme="dark"] .pred-probability-bar {
+  background: #2b3c5d;
+}
+
+[data-theme="dark"] .pred-likelihood-card,
+[data-theme="dark"] .seg-info-block-strategy {
+  background: linear-gradient(135deg, #1d2b47, #15233a);
+}
+
+[data-theme="dark"] .blocked-hint-card {
+  background: #3a1f2a;
+  border-color: #7b3948;
+}
+
+[data-theme="dark"] .blocked-hint-icon,
+[data-theme="dark"] .blocked-hint-title,
+[data-theme="dark"] .blocked-hint-text {
+  color: #ffb0b0;
+}
+
+/* Expanded dark-mode coverage for workspace/report controls */
+[data-theme="dark"] .workflow-hero,
+[data-theme="dark"] .dashboard-hero-premium,
+[data-theme="dark"] .simulator-hero,
+[data-theme="dark"] .simulator-hero-v2,
+[data-theme="dark"] .premium-upload-card,
+[data-theme="dark"] .report-callout {
+  background:
+    radial-gradient(circle at 87% 5%, rgba(79, 139, 255, 0.2), transparent 35%),
+    linear-gradient(180deg, #13213a, #101b2f);
+}
+
+[data-theme="dark"] .profile-tile,
+[data-theme="dark"] .algo-guide,
+[data-theme="dark"] .algo-guide-grid article,
+[data-theme="dark"] .export-stage,
+[data-theme="dark"] .upload-dropzone,
+[data-theme="dark"] .dataset-format-guide,
+[data-theme="dark"] .dataset-format-grid article,
+[data-theme="dark"] .file-preview,
+[data-theme="dark"] .upload-mini-card,
+[data-theme="dark"] .diagnostic-metric,
+[data-theme="dark"] .diagnostic-reco,
+[data-theme="dark"] .rule-table-panel,
+[data-theme="dark"] .rule-detail-panel,
+[data-theme="dark"] .rule-detail-metrics p,
+[data-theme="dark"] .related-rules-block li,
+[data-theme="dark"] .rule-empty-state,
+[data-theme="dark"] .sim-advanced,
+[data-theme="dark"] .product-pool,
+[data-theme="dark"] .selected-basket-v2,
+[data-theme="dark"] .sim-rec-metrics,
+[data-theme="dark"] .sim-rec-card,
+[data-theme="dark"] .recommend-chip,
+[data-theme="dark"] .chart-empty-state,
+[data-theme="dark"] .sim-dataset-card,
+[data-theme="dark"] .sim-goal-card,
+[data-theme="dark"] .pred-risk-factors,
+[data-theme="dark"] .sim-results-summary,
+[data-theme="dark"] .sim-dataset-stats span {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .preset-chip,
+[data-theme="dark"] .scope-chip,
+[data-theme="dark"] .tag-pill,
+[data-theme="dark"] .hero-inline-metrics span,
+[data-theme="dark"] .sim-goal-chip,
+[data-theme="dark"] .sim-rec-rank,
+[data-theme="dark"] .status-chip,
+[data-theme="dark"] .file-control {
+  background: var(--primary-soft);
+  border-color: #49659a;
+  color: #bdd0ff;
+}
+
+[data-theme="dark"] .preset-chip.active,
+[data-theme="dark"] .scope-chip.active,
+[data-theme="dark"] .sim-goal-chip.active,
+[data-theme="dark"] .nav-link.active,
+[data-theme="dark"] .primary-btn,
+[data-theme="dark"] .primary-cta {
+  color: #f8fbff;
+}
+
+[data-theme="dark"] .preset-chip.custom,
+[data-theme="dark"] .sim-goal-chip,
+[data-theme="dark"] .basket-chip,
+[data-theme="dark"] .product-pill,
+[data-theme="dark"] .starter-template-chip,
+[data-theme="dark"] .sim-catalog-toggle {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+[data-theme="dark"] .sim-goal-chip,
+[data-theme="dark"] .basket-chip,
+[data-theme="dark"] .product-pill,
+[data-theme="dark"] .starter-template-chip,
+[data-theme="dark"] .sim-catalog-toggle,
+[data-theme="dark"] .scope-chip,
+[data-theme="dark"] .preset-chip {
+  color: #dce7ff;
+}
+
+[data-theme="dark"] .starter-template-chip:hover,
+[data-theme="dark"] .product-pill:hover,
+[data-theme="dark"] .sim-catalog-toggle:hover,
+[data-theme="dark"] .sim-goal-chip:hover,
+[data-theme="dark"] .basket-chip:hover,
+[data-theme="dark"] .rule-data-table tbody tr:hover {
+  background: #1d2d49;
+  border-color: #5573ab;
+  color: #d7e5ff;
+}
+
+[data-theme="dark"] .rule-data-table tbody tr.selected {
+  background: #223557;
+}
+
+[data-theme="dark"] .control-card select,
+[data-theme="dark"] .simulator-controls select,
+[data-theme="dark"] .sim-goal-control select,
+[data-theme="dark"] .algo-picker select,
+[data-theme="dark"] .recommend-row select,
+[data-theme="dark"] .rule-controls-row select,
+[data-theme="dark"] .rule-search-input,
+[data-theme="dark"] .rule-search-input input {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+[data-theme="dark"] .rule-search-input input::placeholder {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .rule-search-input svg,
+[data-theme="dark"] .dropzone-icon,
+[data-theme="dark"] .file-preview svg,
+[data-theme="dark"] .upload-heading-icon,
+[data-theme="dark"] .upload-mini-card svg,
+[data-theme="dark"] .control-inline svg,
+[data-theme="dark"] .export-hint,
+[data-theme="dark"] .hint-text,
+[data-theme="dark"] .algo-guide summary,
+[data-theme="dark"] .dataset-format-guide summary,
+[data-theme="dark"] .related-rules-block h4,
+[data-theme="dark"] .diagnostic-reco h4,
+[data-theme="dark"] .sim-results-summary svg,
+[data-theme="dark"] .sim-goal-chip span,
+[data-theme="dark"] .seg-card-value,
+[data-theme="dark"] .pred-product-percent {
+  color: #98bcff;
+}
+
+[data-theme="dark"] .stage-kicker,
+[data-theme="dark"] .control-warning,
+[data-theme="dark"] .rule-detail-metrics span,
+[data-theme="dark"] .related-rules-block li span,
+[data-theme="dark"] .dataset-note,
+[data-theme="dark"] .sim-card-label,
+[data-theme="dark"] .sim-subsection-title,
+[data-theme="dark"] .seg-card-label,
+[data-theme="dark"] .pred-likelihood-label {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .profile-tile h4,
+[data-theme="dark"] .upload-mini-card h4,
+[data-theme="dark"] .diagnostic-metric strong,
+[data-theme="dark"] .sim-results-summary strong,
+[data-theme="dark"] .sim-rec-header h3,
+[data-theme="dark"] .sim-metric strong,
+[data-theme="dark"] .rule-empty-state h3,
+[data-theme="dark"] .chart-empty-state h3,
+[data-theme="dark"] .seg-info-title,
+[data-theme="dark"] .pred-section-title,
+[data-theme="dark"] .sim-card-title,
+[data-theme="dark"] .rule-detail-panel h3,
+[data-theme="dark"] .reports-toolbar h2,
+[data-theme="dark"] .report-callout h3,
+[data-theme="dark"] .data-table th {
+  color: var(--text-strong);
+}
+
+[data-theme="dark"] .sim-error-state,
+[data-theme="dark"] .error-pill {
+  background: #3a1f2a;
+  border-color: #7b3948;
+}
+
+[data-theme="dark"] .sim-error-state h3,
+[data-theme="dark"] .sim-error-state p,
+[data-theme="dark"] .error-pill {
+  color: #ffb0b0;
+}
+
+[data-theme="dark"] .upload-dropzone.drop-active {
+  border-color: #6b8ff3;
+  background: #1a2a46;
+  box-shadow: 0 0 0 4px rgba(93, 128, 230, 0.18);
+}
+
+[data-theme="dark"] .upload-progress-bar,
+[data-theme="dark"] .sim-confidence-track,
+[data-theme="dark"] .pred-probability-bar {
+  background: #2b3c5d;
+}
+
+[data-theme="dark"] .upload-progress-wrap small,
+[data-theme="dark"] .reports-toolbar p,
+[data-theme="dark"] .export-stage p,
+[data-theme="dark"] .rule-pagination p,
+[data-theme="dark"] .table-empty-cell,
+[data-theme="dark"] .chart-empty-state p,
+[data-theme="dark"] .report-callout p,
+[data-theme="dark"] .rule-explorer-header p,
+[data-theme="dark"] .upload-dropzone p,
+[data-theme="dark"] .file-preview p,
+[data-theme="dark"] .sim-goal-helper,
+[data-theme="dark"] .sim-results-context,
+[data-theme="dark"] .sim-rec-reason,
+[data-theme="dark"] .sim-metric span,
+[data-theme="dark"] .seg-info-text,
+[data-theme="dark"] .pred-explanation-text,
+[data-theme="dark"] .pred-risk-list {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .recharts-text {
+  fill: var(--muted) !important;
+}
+
+[data-theme="dark"] .recharts-cartesian-grid-horizontal line,
+[data-theme="dark"] .recharts-cartesian-grid-vertical line {
+  stroke: #334666;
+}
+
+[data-theme="dark"] .recharts-default-tooltip {
+  background: #111a2b !important;
+  border: 1px solid var(--line) !important;
+}
+
+[data-theme="dark"] .recharts-tooltip-label {
+  color: var(--text-strong) !important;
+}
+
+[data-theme="dark"] .recharts-tooltip-item {
+  color: var(--muted) !important;
+}
+
+@media (max-width: 960px) {
+  .page-context-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .page-context-details {
+    border-left: 0;
+    border-top: 1px dashed var(--line-strong);
+    padding-left: 0;
+    padding-top: 0.75rem;
+  }
+
+  .home-status-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .analyzer-grid-v2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-context-bar {
+    width: min(1160px, calc(100% - 1rem));
+    padding-top: 0.7rem;
+  }
+
+  .theme-toggle-btn span {
+    display: none;
+  }
 }

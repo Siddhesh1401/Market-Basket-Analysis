@@ -225,7 +225,11 @@ function BasketSimulator({ analysis, activeFileName, analyzedAt }: BasketSimulat
 
   const runSimulation = async () => {
     if (!analysis) {
-      setSimulateError("Upload and analyze a dataset in Workspace first.");
+      setSimulateError(
+        activeFileName
+          ? "Dataset uploaded, but analysis is not complete yet. Run analysis in Workspace first."
+          : "Upload and analyze a dataset in Workspace first.",
+      );
       setRecommendations([]);
       setHasRequested(true);
       return;
@@ -340,7 +344,11 @@ function BasketSimulator({ analysis, activeFileName, analyzedAt }: BasketSimulat
                 </div>
               </>
             ) : (
-              <p className="muted-text">No dataset loaded. Upload and analyze in Workspace first.</p>
+              <p className="muted-text">
+                {activeFileName
+                  ? "Dataset uploaded, but analysis has not run yet. Open Workspace and run analysis."
+                  : "No dataset loaded. Upload and analyze in Workspace first."}
+              </p>
             )}
           </article>
 

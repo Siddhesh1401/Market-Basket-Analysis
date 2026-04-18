@@ -4,6 +4,7 @@ import type { AnalysisResult } from "../types";
 
 type SegmentationProps = {
   analysis: AnalysisResult | null;
+  datasetLoaded: boolean;
 };
 
 interface SegmentPrediction {
@@ -18,7 +19,7 @@ interface SegmentPrediction {
   strategy: string;
 }
 
-function Segmentation({ analysis }: SegmentationProps) {
+function Segmentation({ analysis, datasetLoaded }: SegmentationProps) {
   const [ageGroup, setAgeGroup] = useState("25-34");
   const [frequency, setFrequency] = useState("monthly");
   const [region, setRegion] = useState("north");
@@ -32,7 +33,11 @@ function Segmentation({ analysis }: SegmentationProps) {
 
   const runSegmentation = async () => {
     if (!analysis) {
-      setSegmentError("Upload and analyze a dataset in Workspace first.");
+      setSegmentError(
+        datasetLoaded
+          ? "Dataset uploaded, but analysis is not complete yet. Run analysis in Workspace first."
+          : "Upload and analyze a dataset in Workspace first.",
+      );
       setSegmentResult(null);
       setHasRequested(true);
       return;
@@ -45,7 +50,7 @@ function Segmentation({ analysis }: SegmentationProps) {
 
     try {
       // Map UI inputs to backend parameters
-      const purchaseCountMap = { monthly: 5, quarterly: 3, annual: 1, weekly: 15, daily: 50 };
+      const purchaseCountMap = { monthly: 5, quarterly: 3, annually: 1, "bi-weekly": 8, weekly: 15, daily: 50 };
       const spendingMap = { low: 20, medium: 50, high: 100, premium: 200 };
       const regionMap = { north: 1, south: 1.2, east: 0.9, west: 1.1, central: 1.05 };
       const ageGroupMap = { "18-24": 30, "25-34": 50, "35-44": 60, "45-54": 70, "55+": 80 };
@@ -73,7 +78,6 @@ function Segmentation({ analysis }: SegmentationProps) {
       }
 
       const body = (await response.json()) as any;
-      console.log("Segment response:", body);
       if (body && body.segment !== undefined) {
         setSegmentResult({
           segment_name: body.segment_name || `Segment ${body.segment}`,
@@ -149,11 +153,13 @@ Recommended Strategy: ${segmentResult.strategy}`;
           </div>
 
           {!analysis && (
-            <article className="sim-card" style={{ background: "#fef2f2", borderColor: "#fecaca" }}>
-              <FiInfo style={{ color: "#dc2626", marginBottom: "0.5rem" }} />
-              <p style={{ color: "#dc2626", fontWeight: 700, margin: "0 0 0.3rem" }}>No dataset loaded</p>
-              <p style={{ color: "#991b1b", margin: 0, fontSize: "0.9rem" }}>
-                Upload and analyze a dataset in Workspace first to use segmentation.
+            <article className="sim-card blocked-hint-card">
+              <FiInfo className="blocked-hint-icon" />
+              <p className="blocked-hint-title">{datasetLoaded ? "Dataset ready, analysis pending" : "No dataset loaded"}</p>
+              <p className="blocked-hint-text">
+                {datasetLoaded
+                  ? "Run analysis in Workspace to unlock segmentation outputs."
+                  : "Upload and analyze a dataset in Workspace first to use segmentation."}
               </p>
             </article>
           )}

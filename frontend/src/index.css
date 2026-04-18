@@ -13,8 +13,9 @@ body,
 
 body {
   font-family: "Inter", "Poppins", "Segoe UI", Tahoma, sans-serif;
-  background: #f5f7fb;
-  color: #1f2937;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.6;
   text-rendering: optimizeLegibility;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
