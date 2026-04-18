@@ -1,9 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   FiActivity,
-  FiArrowRight,
-  FiClock,
-  FiDatabase,
   FiFilter,
   FiLoader,
   FiPlay,

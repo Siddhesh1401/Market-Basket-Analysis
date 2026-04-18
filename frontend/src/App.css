@@ -2738,3 +2738,463 @@ button.preset-chip:hover {
     font-size: 0.9rem;
   }
 }
+
+/* ============ SEGMENTATION & PREDICTION PAGES ============ */
+
+.analyzer-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.analyzer-grid-v2 {
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.analyzer-builder,
+.analyzer-builder-v2,
+.analyzer-results,
+.analyzer-results-v2 {
+  min-height: auto;
+}
+
+/* Segmentation Radio Field */
+.seg-field-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.seg-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.6rem;
+  cursor: pointer;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.seg-radio:hover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+
+.seg-radio input {
+  cursor: pointer;
+  accent-color: #3b82f6;
+}
+
+.seg-radio span {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.seg-radio input:checked + span {
+  color: #1e40af;
+}
+
+/* Segmentation Results */
+.seg-result-header {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.seg-result-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  color: #1f2937;
+}
+
+.seg-badges {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.seg-badge {
+  display: inline-flex;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.seg-badge-green {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.seg-badge-blue {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.seg-badge-amber {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.seg-badge-info {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.seg-results-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.seg-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fafbfc, #ffffff);
+  padding: 1rem;
+  text-align: center;
+}
+
+.seg-card-label {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+}
+
+.seg-card-value {
+  margin: 0.5rem 0 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #3b82f6;
+}
+
+.seg-card-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.seg-product-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+.seg-product-chip {
+  display: inline-flex;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.seg-info-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  padding: 1rem;
+}
+
+.seg-info-block-strategy {
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  border-color: #bfdbfe;
+}
+
+.seg-info-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.seg-info-text {
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.seg-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.seg-action-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.7rem;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.seg-action-btn:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+/* Prediction Results */
+.pred-results-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.pred-likelihood-card {
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff, #f8fbff);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.pred-likelihood-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.pred-likelihood-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+}
+
+.pred-likelihood-value {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pred-likelihood-green {
+  color: #16a34a;
+}
+
+.pred-likelihood-blue {
+  color: #3b82f6;
+}
+
+.pred-likelihood-amber {
+  color: #d97706;
+}
+
+.pred-confidence-badge {
+  display: inline-flex;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pred-confidence-green {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.pred-confidence-blue {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.pred-confidence-amber {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.pred-next-products {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 1rem;
+}
+
+.pred-section-title {
+  margin: 0 0 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.pred-product-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 50px;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.8rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafbfc;
+  margin-bottom: 0.6rem;
+}
+
+.pred-product-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.pred-product-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pred-product-name {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.pred-probability-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.pred-probability-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+  transition: width 0.3s ease;
+}
+
+.pred-product-percent {
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.pred-add-top {
+  width: 100%;
+  padding: 0.7rem;
+  margin-top: 0.6rem;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.pred-add-top:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}
+
+.pred-explanation {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f9fafb, #ffffff);
+  padding: 1rem;
+}
+
+.pred-explanation-text {
+  margin: 0.6rem 0 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.pred-risk-factors {
+  border: 1px solid #fee2e2;
+  border-radius: 12px;
+  background: #fef2f2;
+  padding: 1rem;
+}
+
+.pred-risk-list {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+  color: #b91c1c;
+}
+
+.pred-risk-list li {
+  margin: 0.35rem 0;
+  font-size: 0.9rem;
+}
+
+.pred-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.pred-action-btn {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.7rem;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.pred-action-btn:hover {
+  background: #bfdbfe;
+  transform: translateY(-1px);
+}

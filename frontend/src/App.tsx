@@ -4,6 +4,8 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import BasketSimulator from "./pages/BasketSimulator";
+import Segmentation from "./pages/Segmentation";
+import Prediction from "./pages/Prediction";
 import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "./types";
 import "./App.css";
 
@@ -127,6 +129,12 @@ function AppShell() {
             <NavLink to="/simulator" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
               Simulator
             </NavLink>
+            <NavLink to="/segmentation" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              Segmentation
+            </NavLink>
+            <NavLink to="/prediction" className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>
+              Prediction
+            </NavLink>
           </nav>
           <div className="nav-status" aria-live="polite">
             <span className={`status-pill ${workspaceStatus.tone}`}>{workspaceStatus.label}</span>
@@ -159,6 +167,8 @@ function AppShell() {
             element={<BasketSimulator analysis={analysis} activeFileName={fileName} analyzedAt={analysisRunAt} />}
           />
           <Route path="/basket-simulator" element={<Navigate to="/simulator" replace />} />
+          <Route path="/segmentation" element={<Segmentation analysis={analysis} />} />
+          <Route path="/prediction" element={<Prediction analysis={analysis} />} />
         </Routes>
       </main>
     </>
