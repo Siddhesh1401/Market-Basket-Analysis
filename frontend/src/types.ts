@@ -6,6 +6,30 @@ export type Rule = {
   lift: number;
 };
 
+export type CanonicalSchemaField = "invoice" | "item" | "country" | "date" | "time" | "quantity" | "price";
+
+export type ColumnMapping = Partial<Record<CanonicalSchemaField, string>>;
+
+export type SchemaSuggestion = {
+  columns: string[];
+  sampleRows: Array<Record<string, string>>;
+  mapping: Partial<Record<CanonicalSchemaField, string | null>>;
+  alternatives: Partial<Record<CanonicalSchemaField, string[]>>;
+  fieldConfidence: Partial<Record<CanonicalSchemaField, number>>;
+  requiredFields: CanonicalSchemaField[];
+  missingRequired: CanonicalSchemaField[];
+  overallConfidence: number;
+  notes: string[];
+  source?: string;
+};
+
+export type SchemaSuggestResponse = {
+  suggestion: SchemaSuggestion;
+  source: string;
+  aiApplied: boolean;
+  aiConfigured: boolean;
+};
+
 export type Recommendation = {
   product: string;
   support: number;
@@ -44,6 +68,10 @@ export type AnalysisResult = {
   suitability?: {
     isSuitable: boolean;
     message: string;
+  };
+  schema?: {
+    mapping?: Partial<Record<CanonicalSchemaField, string | null>>;
+    source?: string;
   };
   usedSyntheticTransactions?: boolean;
   transactionInferenceMode?: "native" | "datetime-window" | "row-bucket" | string;

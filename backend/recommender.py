@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 import joblib
+import os
 from pathlib import Path
+from itertools import combinations
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_DIR = BASE_DIR / "models"
@@ -18,6 +20,7 @@ class Recommender:
         self.fallback_index = {}
         self.fallback_lookup = {}
         self.fallback_total_transactions = 0
+        self.fallback_ready = False
         self.load_models()
 
     def _build_fallback_recommendations(self):
@@ -25,12 +28,19 @@ class Recommender:
         self.fallback_index = {}
         self.fallback_lookup = {}
         self.fallback_total_transactions = 0
+        self.fallback_ready = False
 
         if self.df is None:
             return
 
         if 'InvoiceNo' not in self.df.columns or 'Description' not in self.df.columns:
             return
+
+        # Keep fallback bounded so API startup and requests remain responsive on large datasets.
+        max_transactions = max(1000, int(os.getenv('FALLBACK_MAX_TRANSACTIONS', '50000')))
+        max_items = max(100, int(os.getenv('FALLBACK_MAX_ITEMS', '800')))
+        max_basket_items = max(2, int(os.getenv('FALLBACK_MAX_BASKET_ITEMS', '25')))
+        max_recs_per_item = max(20, int(os.getenv('FALLBACK_MAX_RECS_PER_ITEM', '200')))
 
         working = self.df[['InvoiceNo', 'Description']].dropna().copy()
         if working.empty:
@@ -43,12 +53,18 @@ class Recommender:
         if working.empty:
             return
 
+        # Reduce dimensionality by keeping the most frequent item labels only.
+        top_items = set(working['Description'].value_counts().head(max_items).index.tolist())
+        working = working[working['Description'].isin(top_items)]
+        if working.empty:
+            return
+
         grouped = (
             working.groupby('InvoiceNo')['Description']
-            .apply(lambda values: sorted(set(values)))
+            .apply(lambda values: sorted(set(values))[:max_basket_items])
         )
 
-        transactions = [items for items in grouped.tolist() if len(items) > 0]
+        transactions = [items for items in grouped.head(max_transactions).tolist() if len(items) > 0]
         self.fallback_total_transactions = len(transactions)
         if self.fallback_total_transactions < 2:
             return
@@ -60,10 +76,8 @@ class Recommender:
             for item in items:
                 item_counts[item] = item_counts.get(item, 0) + 1
 
-            for i in range(len(items)):
-                for j in range(i + 1, len(items)):
-                    pair = (items[i], items[j])
-                    pair_counts[pair] = pair_counts.get(pair, 0) + 1
+            for pair in combinations(items, 2):
+                pair_counts[pair] = pair_counts.get(pair, 0) + 1
 
         recommendations_by_item = {}
 
@@ -95,8 +109,10 @@ class Recommender:
 
         for antecedent, records in recommendations_by_item.items():
             records.sort(key=lambda row: (row['confidence'], row['lift'], row['support']), reverse=True)
-            self.fallback_index[antecedent] = records
+            self.fallback_index[antecedent] = records[:max_recs_per_item]
             self.fallback_lookup[antecedent.lower()] = antecedent
+
+        self.fallback_ready = True
 
     def load_models(self):
         """Load all trained models"""
@@ -126,8 +142,9 @@ class Recommender:
             self.df['Quantity'] = pd.to_numeric(self.df['Quantity'], errors='coerce')
             self.df = self.df[(self.df['Quantity'] > 0) & (self.df['UnitPrice'] > 0)]
 
-            # Build fallback recommendation index so simulator works even if model files are missing.
-            self._build_fallback_recommendations()
+            # Avoid heavy co-occurrence precomputation during startup.
+            # Fallback is built lazily on first recommendation request if needed.
+            self.fallback_ready = False
         except Exception as e:
             print(f"Error loading models: {e}")
 
@@ -160,7 +177,10 @@ class Recommender:
                                 'support': float(rule['support']) if 'support' in rule else 0.0
                             })
 
-        # Fallback recommendations from transaction co-occurrence if models are unavailable
+        # Fallback recommendations from transaction co-occurrence if models are unavailable.
+        if not recommendations and not self.fallback_ready:
+            self._build_fallback_recommendations()
+
         if not recommendations and self.fallback_index:
             cart_lookup = {str(item).strip().lower() for item in cart_items}
             candidate_scores = {}

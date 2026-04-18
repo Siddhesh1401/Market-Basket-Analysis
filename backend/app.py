@@ -1,8 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from recommender import Recommender
-from mining_live import analyze_csv_text
+from mining_live import analyze_csv_text, suggest_column_mapping, file_bytes_to_csv_text
+from gemini_schema import suggest_schema_mapping_with_gemini
 import traceback
+import os
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +24,7 @@ ACTIVE_ANALYSIS_CONTEXT = {
     'products': [],
     'rules': [],
     'algorithm': None,
+    'column_mapping': {},
     'ready': False,
 }
 
@@ -83,6 +89,7 @@ def api_index():
         'message': 'Market Basket Analysis API is running',
         'endpoints': [
             '/api/health',
+            '/api/schema-suggest',
             '/api/analyze',
             '/api/recommendations',
             '/api/rules',
@@ -102,26 +109,163 @@ def health():
     return jsonify({'status': 'ok', 'message': 'Flask API is running'}), 200
 
 
+# ==================== SCHEMA SUGGESTION ====================
+@app.route('/api/schema-suggest', methods=['POST'])
+def schema_suggest():
+    """Suggest column mapping for uploaded CSV/Excel, with optional Gemini fallback."""
+    try:
+        csv_text = ""
+        
+        # Handle multipart/form-data file upload
+        if 'file' in request.files:
+            file = request.files['file']
+            if not file or file.filename == '':
+                return jsonify({'error': 'No file selected.'}), 400
+            
+            file_bytes = file.read()
+            csv_text = file_bytes_to_csv_text(file_bytes, file.filename)
+        
+        # Handle JSON request with CSV text
+        else:
+            data = request.json or {}
+            csv_text = str(data.get('csv_text', '') or '')
+        
+        if not csv_text.strip():
+            return jsonify({'error': 'CSV content is required.'}), 400
+
+        # Extract optional parameters (only from JSON requests, not file uploads)
+        # Use get_json(silent=True) to avoid throwing errors on non-JSON requests
+        data = request.get_json(force=False, silent=True) or {}
+        sample_rows = int(data.get('sample_rows', 8) or 8)
+        use_ai = bool(data.get('use_ai', True))
+        ai_threshold = float(data.get('ai_threshold', 0.75) or 0.75)
+
+        suggestion = suggest_column_mapping(csv_text=csv_text, sample_rows=sample_rows)
+        suggestion_source = 'rule-based'
+        ai_applied = False
+        ai_configured = bool(os.getenv('GEMINI_API_KEY', '').strip())
+
+        should_try_ai = (
+            use_ai
+            and ai_configured
+            and (
+                float(suggestion.get('overallConfidence', 0.0) or 0.0) < ai_threshold
+                or bool(suggestion.get('missingRequired'))
+            )
+        )
+
+        if should_try_ai:
+            ai_result = suggest_schema_mapping_with_gemini(
+                columns=suggestion.get('columns', []),
+                sample_rows=suggestion.get('sampleRows', []),
+                current_mapping=suggestion.get('mapping', {}),
+            )
+
+            if ai_result:
+                merged_mapping = dict(suggestion.get('mapping', {}))
+                for field, column_name in ai_result.get('mapping', {}).items():
+                    if column_name and column_name in suggestion.get('columns', []):
+                        merged_mapping[field] = column_name
+                suggestion['mapping'] = merged_mapping
+
+                merged_confidence = dict(suggestion.get('fieldConfidence', {}))
+                for field, score in ai_result.get('fieldConfidence', {}).items():
+                    merged_confidence[field] = round(max(float(merged_confidence.get(field, 0.0) or 0.0), float(score)), 4)
+                suggestion['fieldConfidence'] = merged_confidence
+
+                required_fields = suggestion.get('requiredFields', ['item'])
+                suggestion['missingRequired'] = [field for field in required_fields if not suggestion['mapping'].get(field)]
+
+                required_scores = [
+                    float(suggestion['fieldConfidence'].get(field, 0.0) or 0.0)
+                    for field in required_fields
+                    if suggestion['mapping'].get(field)
+                ]
+                suggestion['overallConfidence'] = round(float(sum(required_scores) / max(1, len(required_scores))), 4)
+
+                notes = list(suggestion.get('notes', []))
+                notes.append(f"Gemini reviewed mapping using model: {ai_result.get('model', 'gemini')}")
+                for note in ai_result.get('notes', []):
+                    if note not in notes:
+                        notes.append(note)
+                suggestion['notes'] = notes
+
+                suggestion_source = 'hybrid-rule-gemini'
+                ai_applied = True
+
+        suggestion['source'] = suggestion_source
+
+        return jsonify({
+            'suggestion': suggestion,
+            'source': suggestion_source,
+            'aiApplied': ai_applied,
+            'aiConfigured': ai_configured,
+        }), 200
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except Exception as exc:
+        traceback.print_exc()
+        return jsonify({'error': str(exc)}), 500
+
+
 # ==================== LIVE DATA MINING ====================
 @app.route('/api/analyze', methods=['POST'])
 def analyze_uploaded_csv():
-    """Run association mining directly on uploaded CSV text"""
+    """Run association mining on uploaded CSV/Excel file or CSV text"""
     try:
         ACTIVE_ANALYSIS_CONTEXT['products'] = []
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
 
-        data = request.json or {}
-        csv_text = data.get('csv_text', '')
-        algorithm = str(data.get('algorithm', 'fpgrowth')).strip().lower()
+        csv_text = ""
+        
+        # Handle multipart/form-data file upload
+        if 'file' in request.files:
+            file = request.files['file']
+            if not file or file.filename == '':
+                return jsonify({'error': 'No file selected.'}), 400
+            
+            file_bytes = file.read()
+            csv_text = file_bytes_to_csv_text(file_bytes, file.filename)
+            
+            # Extract parameters from form fields
+            algorithm = str(request.form.get('algorithm', 'fpgrowth')).strip().lower()
+            min_support = float(request.form.get('min_support', 0.01))
+            min_confidence = float(request.form.get('min_confidence', 0.1))
+            min_lift = float(request.form.get('min_lift', 1.0))
+            top_n = int(request.form.get('top_n', 400))
+            
+            # Parse column_mapping from form field (sent as JSON string)
+            import json as json_lib
+            raw_mapping = {}
+            mapping_str = request.form.get('column_mapping', '{}')
+            try:
+                raw_mapping = json_lib.loads(mapping_str) if mapping_str else {}
+            except (json_lib.JSONDecodeError, TypeError):
+                raw_mapping = {}
+        
+        # Handle JSON request with CSV text
+        else:
+            data = request.json or {}
+            csv_text = data.get('csv_text', '')
+            algorithm = str(data.get('algorithm', 'fpgrowth')).strip().lower()
+            min_support = float(data.get('min_support', 0.01))
+            min_confidence = float(data.get('min_confidence', 0.1))
+            min_lift = float(data.get('min_lift', 1.0))
+            top_n = int(data.get('top_n', 400))
+            raw_mapping = data.get('column_mapping', {}) or {}
+        
+        if not csv_text.strip():
+            return jsonify({'error': 'CSV content is required.'}), 400
+            
         if algorithm not in {'apriori', 'fpgrowth'}:
             return jsonify({'error': 'Unsupported algorithm. Use apriori or fpgrowth.'}), 400
 
-        min_support = float(data.get('min_support', 0.01))
-        min_confidence = float(data.get('min_confidence', 0.1))
-        min_lift = float(data.get('min_lift', 1.0))
-        top_n = int(data.get('top_n', 400))
+        if not isinstance(raw_mapping, dict):
+            return jsonify({'error': 'column_mapping must be an object of canonical field -> column name.'}), 400
+        column_mapping = {str(k): str(v) for k, v in raw_mapping.items() if v}
 
         result = analyze_csv_text(
             csv_text=csv_text,
@@ -130,11 +274,13 @@ def analyze_uploaded_csv():
             min_confidence=min_confidence,
             min_lift=min_lift,
             top_n=top_n,
+            column_mapping=column_mapping,
         )
 
         ACTIVE_ANALYSIS_CONTEXT['products'] = result.get('productCatalog', [])
         ACTIVE_ANALYSIS_CONTEXT['rules'] = result.get('rules', [])
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = algorithm
+        ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = result.get('schema', {}).get('mapping', column_mapping)
         ACTIVE_ANALYSIS_CONTEXT['ready'] = True
 
         return jsonify({
@@ -147,6 +293,7 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['products'] = []
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({
             'error': reason,
@@ -161,6 +308,7 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['products'] = []
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
+        ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({'error': str(exc)}), 500
 

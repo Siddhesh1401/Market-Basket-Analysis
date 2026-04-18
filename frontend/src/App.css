@@ -1217,6 +1217,155 @@ button.preset-chip:hover {
   font-size: 0.8rem;
 }
 
+.schema-mapper-card {
+  margin-top: 0.9rem;
+  border: 1px solid #dbe7ff;
+  border-radius: 14px;
+  background: #fcfdff;
+  padding: 0.9rem;
+}
+
+.schema-mapper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.8rem;
+}
+
+.schema-mapper-header h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1.03rem;
+}
+
+.schema-mapper-header p {
+  margin: 0.3rem 0 0;
+  color: #475569;
+  max-width: 760px;
+}
+
+.schema-pill-row {
+  margin-top: 0.72rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.schema-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 0.24rem 0.58rem;
+}
+
+.schema-pill.ok {
+  border-color: #22c55e;
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.schema-pill.warn {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.schema-field-grid {
+  margin-top: 0.72rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.6rem;
+}
+
+.schema-field-card {
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 0.64rem;
+  display: grid;
+  gap: 0.34rem;
+}
+
+.schema-field-card.required {
+  border-color: #93c5fd;
+}
+
+.schema-field-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.schema-field-top h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1e3a8a;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.schema-field-top h4 span {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.36rem;
+}
+
+.schema-field-top strong {
+  color: #1d4ed8;
+  font-size: 0.78rem;
+}
+
+.schema-field-card select {
+  border: 1px solid #bfdbfe;
+  border-radius: 9px;
+  background: #fff;
+  color: #1e293b;
+  font-weight: 600;
+  padding: 0.44rem 0.5rem;
+}
+
+.schema-field-card p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.78rem;
+}
+
+.schema-field-card small {
+  color: #0369a1;
+  font-size: 0.72rem;
+}
+
+.schema-notes {
+  margin-top: 0.7rem;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 0.6rem 0.72rem;
+}
+
+.schema-notes h4 {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.schema-notes ul {
+  margin: 0.44rem 0 0;
+  padding-left: 1.05rem;
+  color: #475569;
+  font-size: 0.82rem;
+}
+
 .upload-row {
   display: flex;
   gap: 0.6rem;
@@ -3638,6 +3787,7 @@ button.preset-chip:hover {
 [data-theme="dark"] .starter-template-chip,
 [data-theme="dark"] .basket-chip,
 [data-theme="dark"] .seg-radio,
+[data-theme="dark"] .schema-field-card select,
 [data-theme="dark"] .pred-product-row,
 [data-theme="dark"] .pred-risk-factors,
 [data-theme="dark"] .sim-empty-state,
@@ -3702,6 +3852,9 @@ button.preset-chip:hover {
 [data-theme="dark"] .upload-dropzone,
 [data-theme="dark"] .dataset-format-guide,
 [data-theme="dark"] .dataset-format-grid article,
+[data-theme="dark"] .schema-mapper-card,
+[data-theme="dark"] .schema-field-card,
+[data-theme="dark"] .schema-notes,
 [data-theme="dark"] .file-preview,
 [data-theme="dark"] .upload-mini-card,
 [data-theme="dark"] .diagnostic-metric,
@@ -3730,6 +3883,7 @@ button.preset-chip:hover {
 [data-theme="dark"] .preset-chip,
 [data-theme="dark"] .scope-chip,
 [data-theme="dark"] .tag-pill,
+[data-theme="dark"] .schema-pill,
 [data-theme="dark"] .hero-inline-metrics span,
 [data-theme="dark"] .sim-goal-chip,
 [data-theme="dark"] .sim-rec-rank,
@@ -3817,6 +3971,7 @@ button.preset-chip:hover {
 [data-theme="dark"] .sim-results-summary svg,
 [data-theme="dark"] .sim-goal-chip span,
 [data-theme="dark"] .seg-card-value,
+[data-theme="dark"] .schema-field-top strong,
 [data-theme="dark"] .pred-product-percent {
   color: #98bcff;
 }
@@ -3826,6 +3981,7 @@ button.preset-chip:hover {
 [data-theme="dark"] .rule-detail-metrics span,
 [data-theme="dark"] .related-rules-block li span,
 [data-theme="dark"] .dataset-note,
+[data-theme="dark"] .schema-field-card small,
 [data-theme="dark"] .sim-card-label,
 [data-theme="dark"] .sim-subsection-title,
 [data-theme="dark"] .seg-card-label,
@@ -3836,6 +3992,9 @@ button.preset-chip:hover {
 [data-theme="dark"] .profile-tile h4,
 [data-theme="dark"] .upload-mini-card h4,
 [data-theme="dark"] .diagnostic-metric strong,
+[data-theme="dark"] .schema-mapper-header h3,
+[data-theme="dark"] .schema-notes h4,
+[data-theme="dark"] .schema-field-top h4,
 [data-theme="dark"] .sim-results-summary strong,
 [data-theme="dark"] .sim-rec-header h3,
 [data-theme="dark"] .sim-metric strong,
@@ -3879,6 +4038,9 @@ button.preset-chip:hover {
 [data-theme="dark"] .reports-toolbar p,
 [data-theme="dark"] .export-stage p,
 [data-theme="dark"] .rule-pagination p,
+[data-theme="dark"] .schema-mapper-header p,
+[data-theme="dark"] .schema-field-card p,
+[data-theme="dark"] .schema-notes ul,
 [data-theme="dark"] .table-empty-cell,
 [data-theme="dark"] .chart-empty-state p,
 [data-theme="dark"] .report-callout p,
@@ -3917,9 +4079,27 @@ button.preset-chip:hover {
   color: var(--muted) !important;
 }
 
+[data-theme="dark"] .schema-pill.ok {
+  background: #153628;
+  border-color: #2f8d62;
+  color: #94f0c6;
+}
+
+[data-theme="dark"] .schema-pill.warn,
+[data-theme="dark"] .schema-field-top h4 span {
+  background: #3a2a12;
+  border-color: #8a6322;
+  color: #ffd28a;
+}
+
 @media (max-width: 960px) {
   .page-context-inner {
     grid-template-columns: 1fr;
+  }
+
+  .schema-mapper-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .page-context-details {

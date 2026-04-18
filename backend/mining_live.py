@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from io import StringIO
+from io import StringIO, BytesIO
+from difflib import SequenceMatcher
 import re
 from typing import Any
 
@@ -46,6 +47,28 @@ DATE_KEYS = ["invoicedate", "invoice_date", "date", "datetime", "orderdate", "pu
 TIME_KEYS = ["time", "order_time", "ordertime", "purchase_time", "purchasetime", "transactiontime"]
 QUANTITY_KEYS = ["quantity", "qty", "itemqty"]
 PRICE_KEYS = ["unitprice", "price", "amount"]
+
+CANONICAL_FIELD_KEYS = {
+    "invoice": INVOICE_KEYS,
+    "item": ITEM_KEYS,
+    "country": COUNTRY_KEYS,
+    "date": DATE_KEYS,
+    "time": TIME_KEYS,
+    "quantity": QUANTITY_KEYS,
+    "price": PRICE_KEYS,
+}
+
+CANONICAL_FIELD_TARGETS = {
+    "invoice": "invoice_no",
+    "item": "product_name",
+    "country": "country",
+    "date": "invoice_date",
+    "time": "invoice_time",
+    "quantity": "quantity",
+    "price": "unit_price",
+}
+
+REQUIRED_SCHEMA_FIELDS = ["item"]
 
 NOISE_ITEMS = {
     "POSTAGE",
@@ -94,6 +117,269 @@ def _detect_column(columns: list[str], candidates: list[str]) -> str | None:
                 return original_col
 
     return None
+
+
+def _similarity_score(left: str, right: str) -> float:
+    if not left or not right:
+        return 0.0
+    return SequenceMatcher(None, _normalize_header(left), _normalize_header(right)).ratio()
+
+
+def _rank_column_candidates(columns: list[str], aliases: list[str]) -> list[tuple[str, float]]:
+    ranked: list[tuple[str, float]] = []
+    for column in columns:
+        normalized_column = _normalize_header(column)
+        tokenized_column = _header_tokens(column)
+        score = 0.0
+
+        for alias in aliases:
+            normalized_alias = _normalize_header(alias)
+            if not normalized_alias:
+                continue
+
+            alias_tokens = _header_tokens(alias)
+            alias_score = 0.0
+
+            if normalized_column == normalized_alias:
+                alias_score = 1.0
+            elif normalized_alias in normalized_column and len(normalized_alias) >= 4:
+                alias_score = 0.88
+            elif alias_tokens and alias_tokens.issubset(tokenized_column):
+                alias_score = 0.82
+            else:
+                alias_score = _similarity_score(column, alias) * 0.75
+
+            score = max(score, alias_score)
+
+        if score >= 0.4:
+            ranked.append((column, round(float(score), 4)))
+
+    ranked.sort(key=lambda row: row[1], reverse=True)
+    return ranked
+
+
+def _series_positive_numeric_ratio(series: pd.Series) -> float:
+    numeric_values = pd.to_numeric(series, errors="coerce")
+    non_null = numeric_values.notna()
+    if not bool(non_null.any()):
+        return 0.0
+    ratio = float((numeric_values[non_null] > 0).mean())
+    return max(0.0, min(1.0, ratio))
+
+
+def _series_datetime_ratio(series: pd.Series) -> float:
+    parsed = pd.to_datetime(series, errors="coerce")
+    if len(parsed) == 0:
+        return 0.0
+    ratio = float(parsed.notna().mean())
+    return max(0.0, min(1.0, ratio))
+
+
+def _series_text_density_ratio(series: pd.Series) -> float:
+    text_values = series.fillna("").astype(str).str.strip()
+    if len(text_values) == 0:
+        return 0.0
+    ratio = float((text_values != "").mean())
+    return max(0.0, min(1.0, ratio))
+
+
+def _series_uniqueness_ratio(series: pd.Series) -> float:
+    cleaned = series.fillna("").astype(str).str.strip()
+    cleaned = cleaned[cleaned != ""]
+    if len(cleaned) == 0:
+        return 0.0
+    ratio = float(cleaned.nunique(dropna=True)) / float(len(cleaned))
+    return max(0.0, min(1.0, ratio))
+
+
+def _value_confidence_boost(field: str, series: pd.Series) -> float:
+    if field in {"quantity", "price"}:
+        return _series_positive_numeric_ratio(series)
+    if field == "date":
+        return _series_datetime_ratio(series)
+    if field == "time":
+        # Time-only columns often parse partially; lower-weight signal is enough.
+        return min(1.0, _series_datetime_ratio(series) * 1.15)
+    if field == "invoice":
+        text_ratio = _series_text_density_ratio(series)
+        uniqueness = _series_uniqueness_ratio(series)
+        return max(0.0, min(1.0, text_ratio * 0.45 + uniqueness * 0.55))
+    if field == "item":
+        text_ratio = _series_text_density_ratio(series)
+        uniqueness = _series_uniqueness_ratio(series)
+        # Item columns should be mostly non-empty with repeated/varied labels.
+        return max(0.0, min(1.0, text_ratio * 0.7 + min(1.0, uniqueness * 1.25) * 0.3))
+    if field == "country":
+        return _series_text_density_ratio(series)
+    return 0.0
+
+
+def _build_sample_rows(df: pd.DataFrame, limit: int = 8) -> list[dict[str, str]]:
+    if df.empty:
+        return []
+
+    max_rows = max(1, min(int(limit), 12))
+    sample_df = df.head(max_rows)
+    sample_rows: list[dict[str, str]] = []
+    for _, row in sample_df.iterrows():
+        sample: dict[str, str] = {}
+        for column in df.columns:
+            value = row[column]
+            if pd.isna(value):
+                sample[str(column)] = ""
+            else:
+                sample[str(column)] = str(value)[:80]
+        sample_rows.append(sample)
+    return sample_rows
+
+
+def file_bytes_to_csv_text(file_bytes: bytes, filename: str) -> str:
+    """Convert Excel or CSV file bytes to CSV text format.
+    
+    Args:
+        file_bytes: Raw file content as bytes
+        filename: Original filename (used to detect format)
+    
+    Returns:
+        CSV text string
+    
+    Raises:
+        ValueError: If file format is not supported
+    """
+    filename_lower = filename.lower()
+    
+    # Excel file
+    if filename_lower.endswith(('.xlsx', '.xls')):
+        try:
+            df = pd.read_excel(BytesIO(file_bytes))
+            csv_text = df.to_csv(index=False)
+            return csv_text
+        except Exception as e:
+            raise ValueError(f"Failed to read Excel file: {str(e)}")
+    
+    # CSV file
+    elif filename_lower.endswith('.csv'):
+        try:
+            csv_text = file_bytes.decode('utf-8', errors='replace')
+            return csv_text
+        except Exception as e:
+            raise ValueError(f"Failed to read CSV file: {str(e)}")
+    
+    else:
+        raise ValueError(f"Unsupported file format. Please upload .csv, .xlsx, or .xls files.")
+
+
+def suggest_column_mapping(csv_text: str, sample_rows: int = 8) -> dict[str, Any]:
+    if not csv_text or not csv_text.strip():
+        raise ValueError("CSV content is empty.")
+
+    df = pd.read_csv(StringIO(csv_text), on_bad_lines='skip', engine='python')
+    if df.empty:
+        raise ValueError("CSV has no data rows.")
+
+    columns = [str(column) for column in df.columns]
+    ranked_candidates: dict[str, list[tuple[str, float]]] = {
+        field: _rank_column_candidates(columns, aliases)
+        for field, aliases in CANONICAL_FIELD_KEYS.items()
+    }
+
+    mapping: dict[str, str | None] = {field: None for field in CANONICAL_FIELD_KEYS}
+    alternatives: dict[str, list[str]] = {
+        field: [candidate for candidate, _ in ranked[:5]]
+        for field, ranked in ranked_candidates.items()
+    }
+    field_confidence: dict[str, float] = {field: 0.0 for field in CANONICAL_FIELD_KEYS}
+
+    # Prefer assigning distinct columns to each semantic field where possible.
+    used_columns: set[str] = set()
+    priority_order = ["item", "invoice", "quantity", "price", "date", "time", "country"]
+    for field in priority_order:
+        for candidate, candidate_score in ranked_candidates[field]:
+            if candidate not in used_columns:
+                mapping[field] = candidate
+                field_confidence[field] = float(candidate_score)
+                used_columns.add(candidate)
+                break
+
+    # Optional fallback: allow date/time to share a single datetime column when needed.
+    if mapping["date"] is None and mapping["time"] is not None:
+        mapping["date"] = mapping["time"]
+        field_confidence["date"] = max(field_confidence["date"], field_confidence["time"] * 0.7)
+    if mapping["time"] is None and mapping["date"] is not None:
+        mapping["time"] = mapping["date"]
+        field_confidence["time"] = max(field_confidence["time"], field_confidence["date"] * 0.6)
+
+    # Strengthen confidence using value profiles.
+    for field, column_name in mapping.items():
+        if not column_name or column_name not in df.columns:
+            continue
+        structural = field_confidence[field]
+        value_signal = _value_confidence_boost(field, df[column_name])
+        field_confidence[field] = round(min(1.0, structural * 0.7 + value_signal * 0.3), 4)
+
+    missing_required = [field for field in REQUIRED_SCHEMA_FIELDS if not mapping.get(field)]
+    scored_required = [field_confidence[field] for field in REQUIRED_SCHEMA_FIELDS if mapping.get(field)]
+    overall_confidence = round(float(sum(scored_required) / max(1, len(scored_required))), 4)
+
+    notes: list[str] = []
+    if missing_required:
+        notes.append("Missing required field mapping: item/product column was not confidently detected.")
+    if not mapping.get("invoice"):
+        notes.append("Invoice/order column not mapped; backend may infer synthetic transactions from date/time or row buckets.")
+    if mapping.get("item") and field_confidence.get("item", 0.0) < 0.65:
+        notes.append("Detected item column has low confidence. Please review mapping before analysis.")
+
+    return {
+        "columns": columns,
+        "sampleRows": _build_sample_rows(df, limit=sample_rows),
+        "mapping": mapping,
+        "alternatives": alternatives,
+        "fieldConfidence": field_confidence,
+        "requiredFields": REQUIRED_SCHEMA_FIELDS,
+        "missingRequired": missing_required,
+        "overallConfidence": overall_confidence,
+        "notes": notes,
+        "source": "rule-based",
+    }
+
+
+def _apply_column_mapping(df: pd.DataFrame, column_mapping: dict[str, Any] | None) -> pd.DataFrame:
+    if not isinstance(column_mapping, dict) or not column_mapping:
+        return df
+
+    normalized_lookup = {str(column).strip().lower(): str(column) for column in df.columns}
+    rename_map: dict[str, str] = {}
+
+    for field, selected_column in column_mapping.items():
+        canonical_field = str(field).strip().lower()
+        if canonical_field not in CANONICAL_FIELD_TARGETS:
+            continue
+        if selected_column is None:
+            continue
+
+        requested_column = str(selected_column).strip()
+        if not requested_column:
+            continue
+
+        if requested_column in df.columns:
+            original_column = requested_column
+        else:
+            original_column = normalized_lookup.get(requested_column.lower())
+
+        if original_column is None:
+            continue
+
+        target_column = CANONICAL_FIELD_TARGETS[canonical_field]
+        if original_column == target_column:
+            continue
+
+        if target_column in df.columns and target_column != original_column:
+            target_column = f"__mapped_{target_column}"
+        rename_map[original_column] = target_column
+
+    if not rename_map:
+        return df
+    return df.rename(columns=rename_map)
 
 
 def _safe_item_name(value: Any) -> str:
@@ -153,13 +439,16 @@ def analyze_csv_text(
     min_confidence: float = 0.1,
     min_lift: float = 1.0,
     top_n: int = 400,
+    column_mapping: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not csv_text or not csv_text.strip():
         raise ValueError("CSV content is empty.")
 
-    df = pd.read_csv(StringIO(csv_text))
+    df = pd.read_csv(StringIO(csv_text), on_bad_lines='skip', engine='python')
     if df.empty:
         raise ValueError("CSV has no data rows.")
+
+    df = _apply_column_mapping(df, column_mapping)
 
     columns = list(df.columns)
     invoice_col = _detect_column(columns, INVOICE_KEYS)

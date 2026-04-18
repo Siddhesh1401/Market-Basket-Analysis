@@ -42,6 +42,46 @@ python app.py
 
 API will be available at: **http://localhost:5000**
 
+### Optional: Enable Gemini-Assisted Schema Mapping
+
+Get a Gemini API key from Google AI Studio:
+
+1. Open: https://aistudio.google.com/app/apikey
+2. Sign in with your Google account
+3. Click **Create API key**
+4. Copy the generated key
+
+Store the key securely (recommended `.env` flow):
+
+1. Copy `.env.example` to `.env` inside `backend/`
+2. Set your values:
+
+```bash
+GEMINI_API_KEY=your_real_key_here
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+3. Start backend normally:
+
+```bash
+python app.py
+```
+
+Alternative (current terminal only):
+
+```bash
+set GEMINI_API_KEY=your_api_key_here
+set GEMINI_MODEL=gemini-2.5-flash
+```
+
+Security notes:
+
+- Never hardcode API keys in code.
+- Never commit `.env` to GitHub.
+- `backend/.env` is already ignored by git.
+
+If `GEMINI_API_KEY` is not set, the app still works in rule-based schema mapping mode.
+
 ## API Endpoints
 
 ### Health Check
@@ -57,9 +97,30 @@ Body: {
   "algorithm": "fpgrowth",  // or "apriori"
   "min_support": 0.01,
   "min_confidence": 0.1,
-  "min_lift": 1.0
+  "min_lift": 1.0,
+  "column_mapping": {
+    "item": "Product Name",
+    "invoice": "Invoice No"
+  }
 }
 Response: { "analysis": {...}, "algorithm": "fpgrowth" }
+```
+
+### Suggest CSV Schema Mapping
+```
+POST /api/schema-suggest
+Body: {
+  "csv_text": "Invoice No,Product Name,Qty,...",
+  "sample_rows": 8,
+  "use_ai": true,
+  "ai_threshold": 0.75
+}
+Response: {
+  "suggestion": {...},
+  "source": "rule-based|hybrid-rule-gemini",
+  "aiApplied": true|false,
+  "aiConfigured": true|false
+}
 ```
 
 ### Get Recommendations

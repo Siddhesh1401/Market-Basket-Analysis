@@ -124,6 +124,27 @@ Acceptance criteria:
 - Endpoints are usable from frontend without manual API calls
 - Output is understandable to non-technical users
 
+### 2.7 AI-Assisted Schema Mapping (Gemini + Rule Engine)
+
+Status: In progress
+
+Goal: Reduce upload failures caused by non-standard column names by adding an assisted schema-detection flow.
+
+Scope:
+
+- Add backend schema suggestion endpoint for uploaded CSV text
+- Implement deterministic schema detection first (synonyms + fuzzy + value profiling)
+- Add Gemini fallback only when rule-based confidence is low
+- Return suggested mapping, confidence, alternatives, and missing required fields
+- Add Workspace UI to review and edit mapping before running analysis
+- Pass confirmed mapping into analysis endpoint and reuse existing mining workflow
+
+Acceptance criteria:
+
+- Users can upload valid but differently named datasets and still run analysis successfully
+- Mapping suggestions are visible, editable, and confidence-scored
+- App works without Gemini key (rule-based mode), and improves when Gemini is configured
+
 ---
 
 ## Phase 3 - Platform-Level Upgrades

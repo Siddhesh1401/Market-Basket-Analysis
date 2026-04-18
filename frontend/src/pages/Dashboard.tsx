@@ -31,17 +31,26 @@ import {
   FiZap,
   FiUploadCloud,
 } from "react-icons/fi";
-import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "../types";
+import type {
+  AnalysisParams,
+  AnalysisResult,
+  CanonicalSchemaField,
+  ColumnMapping,
+  MiningAlgorithm,
+  SchemaSuggestResponse,
+} from "../types";
 
 type DashboardProps = {
   fileName: string;
   fileSize: number | null;
+  fileObject: File | null;
+  csvText: string;
   error: string;
   analysis: AnalysisResult | null;
   onFileChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onFileSelected: (file: File) => void;
   onClearDataset: () => void;
-  runAnalysis: (params: AnalysisParams) => Promise<void>;
+  runAnalysis: (params: AnalysisParams, columnMapping?: ColumnMapping) => Promise<void>;
 };
 
 type WorkflowStageState = "idle" | "active" | "complete";
@@ -91,9 +100,21 @@ const PRESET_PROFILES: Record<PresetKey, { label: string; description: string; p
 
 const PRESET_ORDER: PresetKey[] = ["balanced", "broad", "strict"];
 
+const SCHEMA_FIELD_META: Array<{ key: CanonicalSchemaField; label: string; required?: boolean; hint: string }> = [
+  { key: "item", label: "Item/Product", required: true, hint: "Primary product column used for basket mining." },
+  { key: "invoice", label: "Invoice/Order", hint: "Transaction identifier for precise basket grouping." },
+  { key: "date", label: "Date", hint: "Used for temporal trends and synthetic transaction fallback." },
+  { key: "time", label: "Time", hint: "Used with date for stronger temporal basket inference." },
+  { key: "quantity", label: "Quantity", hint: "Optional quality filter for non-positive quantity rows." },
+  { key: "price", label: "Price", hint: "Optional quality filter for non-positive price rows." },
+  { key: "country", label: "Country", hint: "Optional geography distribution insights." },
+];
+
 function Dashboard({
   fileName,
   fileSize,
+  fileObject,
+  csvText,
   error,
   analysis,
   onFileChange,
@@ -116,6 +137,13 @@ function Dashboard({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [schemaSuggestion, setSchemaSuggestion] = useState<SchemaSuggestResponse["suggestion"] | null>(null);
+  const [schemaMapping, setSchemaMapping] = useState<ColumnMapping>({});
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaError, setSchemaError] = useState("");
+  const [schemaSource, setSchemaSource] = useState("");
+  const [schemaAiApplied, setSchemaAiApplied] = useState(false);
+  const [schemaAiConfigured, setSchemaAiConfigured] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const workflowStages = useMemo(
@@ -168,6 +196,125 @@ function Dashboard({
 
     return () => window.clearInterval(intervalId);
   }, [fileName]);
+
+  useEffect(() => {
+    setSchemaSuggestion(null);
+    setSchemaMapping({});
+    setSchemaError("");
+    setSchemaSource("");
+    setSchemaAiApplied(false);
+    setSchemaAiConfigured(false);
+  }, [csvText, fileName]);
+
+  const requestSchemaSuggestion = async () => {
+    setSchemaLoading(true);
+    setSchemaError("");
+    try {
+      // If file is Excel, send file directly; else send CSV text
+      if (fileObject && (fileObject.name.toLowerCase().endsWith('.xlsx') || fileObject.name.toLowerCase().endsWith('.xls'))) {
+        const formData = new FormData();
+        formData.append('file', fileObject);
+
+        const response = await fetch("http://localhost:5000/api/schema-suggest", {
+          method: "POST",
+          body: formData,
+        });
+
+        const body = (await response.json().catch(() => null)) as SchemaSuggestResponse | { error?: string } | null;
+        if (!response.ok || !body || !("suggestion" in body)) {
+          const message = body && "error" in body ? body.error ?? "Failed to suggest schema." : "Failed to suggest schema.";
+          setSchemaSuggestion(null);
+          setSchemaMapping({});
+          setSchemaError(message);
+          return;
+        }
+
+        setSchemaSuggestion(body.suggestion);
+        const initialMapping: ColumnMapping = {};
+        SCHEMA_FIELD_META.forEach(({ key }) => {
+          const candidate = body.suggestion.mapping[key];
+          if (typeof candidate === "string" && candidate.trim()) {
+            initialMapping[key] = candidate;
+          }
+        });
+        setSchemaMapping(initialMapping);
+        setSchemaSource(body.source || "");
+        setSchemaAiApplied(body.aiApplied || false);
+        setSchemaAiConfigured(body.aiConfigured || false);
+      } else if (!csvText.trim()) {
+        setSchemaError("Upload a CSV file first to detect schema mapping.");
+        return;
+      } else {
+        // Original CSV text flow
+        const response = await fetch("http://localhost:5000/api/schema-suggest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            csv_text: csvText,
+            sample_rows: 8,
+            use_ai: true,
+            ai_threshold: 0.75,
+          }),
+        });
+
+        const body = (await response.json().catch(() => null)) as SchemaSuggestResponse | { error?: string } | null;
+        if (!response.ok || !body || !("suggestion" in body)) {
+          const message = body && "error" in body ? body.error ?? "Failed to suggest schema." : "Failed to suggest schema.";
+          setSchemaSuggestion(null);
+          setSchemaMapping({});
+          setSchemaError(message);
+          return;
+        }
+
+        setSchemaSuggestion(body.suggestion);
+        const initialMapping: ColumnMapping = {};
+        SCHEMA_FIELD_META.forEach(({ key }) => {
+          const candidate = body.suggestion.mapping[key];
+          if (typeof candidate === "string" && candidate.trim()) {
+            initialMapping[key] = candidate;
+          }
+        });
+        setSchemaMapping(initialMapping);
+        setSchemaSource(body.source || "");
+        setSchemaAiApplied(body.aiApplied || false);
+        setSchemaAiConfigured(body.aiConfigured || false);
+      }
+    } catch (err) {
+      setSchemaError(err instanceof Error ? err.message : "Unknown error");
+      setSchemaSuggestion(null);
+      setSchemaMapping({});
+    } finally {
+      setSchemaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!csvText.trim()) {
+      return;
+    }
+    void requestSchemaSuggestion();
+  }, [csvText]);
+
+  const normalizedSchemaMapping = useMemo(() => {
+    const mapping: ColumnMapping = {};
+    Object.entries(schemaMapping).forEach(([field, value]) => {
+      if (typeof value === "string" && value.trim()) {
+        mapping[field as CanonicalSchemaField] = value;
+      }
+    });
+    return mapping;
+  }, [schemaMapping]);
+
+  const missingRequiredMapping = useMemo(() => {
+    if (!schemaSuggestion) {
+      return ["item"] as CanonicalSchemaField[];
+    }
+    return (schemaSuggestion.requiredFields ?? ["item"]).filter((field) => !normalizedSchemaMapping[field]);
+  }, [normalizedSchemaMapping, schemaSuggestion]);
+
+  const schemaConfidence = schemaSuggestion?.overallConfidence ?? 0;
 
   const filteredRules = useMemo(() => {
     if (!analysis) {
@@ -569,9 +716,19 @@ function Dashboard({
       return;
     }
 
+    if (!schemaSuggestion && csvText.trim()) {
+      window.alert("Schema mapping is still being prepared. Please wait a moment and try again.");
+      return;
+    }
+
+    if (missingRequiredMapping.length > 0) {
+      window.alert("Schema mapping is incomplete. Please map the required Item/Product field before analysis.");
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
-      await runAnalysis(appliedParams);
+      await runAnalysis(appliedParams, normalizedSchemaMapping);
     } finally {
       setIsAnalyzing(false);
     }
@@ -586,6 +743,18 @@ function Dashboard({
       inputRef.current.value = "";
     }
     onClearDataset();
+  };
+
+  const updateSchemaField = (field: CanonicalSchemaField, value: string) => {
+    setSchemaMapping((prev) => {
+      const next = { ...prev };
+      if (value.trim()) {
+        next[field] = value;
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
   };
 
   const previewStats = [
@@ -674,7 +843,7 @@ function Dashboard({
               browse your device
             </button>
           </p>
-          <input ref={inputRef} type="file" accept=".csv" onChange={onFileChange} />
+          <input ref={inputRef} type="file" accept=".csv,.xlsx,.xls" onChange={onFileChange} />
           <div className="required-tags">
             <span className="tag-pill">required: product/item column</span>
             <span className="tag-pill">best: invoice/order + item</span>
@@ -706,13 +875,104 @@ function Dashboard({
           </details>
         </div>
 
+        {fileName && (
+          <div className="schema-mapper-card">
+            <div className="schema-mapper-header">
+              <div>
+                <p className="stage-kicker">Phase 2.7</p>
+                <h3>Schema Mapping Review</h3>
+                <p>
+                  Validate detected columns before analysis. Rule-based matching runs first, then Gemini assists when confidence is low.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={() => {
+                  void requestSchemaSuggestion();
+                }}
+                disabled={schemaLoading || !csvText.trim()}
+              >
+                {schemaLoading ? <FiLoader className="spin" /> : <FiSearch />} Detect Mapping
+              </button>
+            </div>
+
+            <div className="schema-pill-row">
+              <span className={`schema-pill ${missingRequiredMapping.length === 0 ? "ok" : "warn"}`}>
+                {missingRequiredMapping.length === 0 ? "Required mapping ready" : "Required mapping missing"}
+              </span>
+              <span className="schema-pill">Confidence {Math.round(schemaConfidence * 100)}%</span>
+              {schemaSource && <span className="schema-pill">Source: {schemaSource}</span>}
+              {schemaAiApplied && <span className="schema-pill">Gemini assisted</span>}
+              {!schemaAiApplied && schemaAiConfigured && schemaSource && <span className="schema-pill">Rule engine resolved</span>}
+              {!schemaAiConfigured && <span className="schema-pill">Gemini not configured</span>}
+            </div>
+
+            {schemaLoading && <p className="control-note">Detecting column semantics and preparing mapping suggestions...</p>}
+
+            {schemaError && <p className="error-pill">{schemaError}</p>}
+
+            {schemaSuggestion && (
+              <>
+                <div className="schema-field-grid">
+                  {SCHEMA_FIELD_META.map((field) => {
+                    const fieldConfidence = schemaSuggestion.fieldConfidence[field.key] ?? 0;
+                    const selectedValue = schemaMapping[field.key] ?? "";
+                    const alternatives = schemaSuggestion.alternatives[field.key] ?? [];
+
+                    return (
+                      <article key={field.key} className={`schema-field-card ${field.required ? "required" : ""}`}>
+                        <div className="schema-field-top">
+                          <h4>
+                            {field.label}
+                            {field.required && <span>Required</span>}
+                          </h4>
+                          <strong>{Math.round(fieldConfidence * 100)}%</strong>
+                        </div>
+                        <select value={selectedValue} onChange={(event) => updateSchemaField(field.key, event.target.value)}>
+                          <option value="">Not mapped</option>
+                          {schemaSuggestion.columns.map((column) => (
+                            <option key={`${field.key}-${column}`} value={column}>
+                              {column}
+                            </option>
+                          ))}
+                        </select>
+                        <p>{field.hint}</p>
+                        {alternatives.length > 0 && (
+                          <small>Top candidates: {alternatives.slice(0, 3).join(", ")}</small>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {schemaSuggestion.notes.length > 0 && (
+                  <div className="schema-notes">
+                    <h4>Mapping notes</h4>
+                    <ul>
+                      {schemaSuggestion.notes.map((note, index) => (
+                        <li key={`${note}-${index}`}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div className="upload-row action-row">
           <button className="secondary-btn" type="button" onClick={openFilePicker}>
             <FiUploadCloud /> Upload File
           </button>
-          <button className="primary-btn" type="button" onClick={handleAnalyze} disabled={isAnalyzing || !fileName || hasPendingChanges}>
-            {isAnalyzing ? <FiLoader className="spin" /> : <FiZap />}
-            {isAnalyzing ? "Analyzing..." : "Analyze Dataset"}
+          <button
+            className="primary-btn"
+            type="button"
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || schemaLoading || !fileName || hasPendingChanges}
+          >
+            {isAnalyzing || schemaLoading ? <FiLoader className="spin" /> : <FiZap />}
+            {isAnalyzing ? "Analyzing..." : schemaLoading ? "Preparing mapping..." : "Analyze Dataset"}
           </button>
           <button className="danger-btn" type="button" onClick={clearDataset} disabled={!fileName && !analysis}>
             <FiXCircle /> Remove Dataset

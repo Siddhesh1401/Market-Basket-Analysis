@@ -18,6 +18,32 @@ Returns basic health response.
 
 ## Live Mining
 
+### `POST /api/schema-suggest`
+
+Suggest canonical CSV field mapping (`item`, `invoice`, `date`, `time`, `quantity`, `price`, `country`) before analysis.
+
+Request body:
+
+```json
+{
+  "csv_text": "Invoice No,Product Name,Qty,...",
+  "sample_rows": 8,
+  "use_ai": true,
+  "ai_threshold": 0.75
+}
+```
+
+Response (200) includes:
+
+- `suggestion` object (`mapping`, `fieldConfidence`, `alternatives`, `missingRequired`, `notes`)
+- `source` (`rule-based` or `hybrid-rule-gemini`)
+- `aiApplied`
+- `aiConfigured`
+
+Notes:
+
+- Gemini is optional. If no `GEMINI_API_KEY` is configured, rule-based suggestions still work.
+
 ### `POST /api/analyze`
 
 Run live market basket analysis on CSV text.
@@ -30,7 +56,12 @@ Request body:
   "algorithm": "fpgrowth",
   "min_support": 0.02,
   "min_confidence": 0.1,
-  "min_lift": 1.0
+  "min_lift": 1.0,
+  "column_mapping": {
+    "item": "Product Name",
+    "invoice": "Invoice No",
+    "quantity": "Qty"
+  }
 }
 ```
 
@@ -48,7 +79,8 @@ Validation response (400) includes:
 
 Notes:
 
-- Current implementation forces algorithm to FP-Growth inside endpoint logic.
+- `algorithm` supports `apriori` and `fpgrowth`.
+- `column_mapping` is optional but recommended for non-standard CSV headers.
 
 ---
 

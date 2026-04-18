@@ -7,7 +7,7 @@ import Reports from "./pages/Reports";
 import BasketSimulator from "./pages/BasketSimulator";
 import Segmentation from "./pages/Segmentation";
 import Prediction from "./pages/Prediction";
-import type { AnalysisParams, AnalysisResult, MiningAlgorithm } from "./types";
+import type { AnalysisParams, AnalysisResult, ColumnMapping, MiningAlgorithm } from "./types";
 import "./App.css";
 
 type ThemeMode = "light" | "dark";
@@ -163,6 +163,7 @@ function AppShell() {
   const location = useLocation();
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState<number | null>(null);
+  const [fileObject, setFileObject] = useState<File | null>(null);
   const [csvText, setCsvText] = useState("");
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisRunAt, setAnalysisRunAt] = useState<string | null>(null);
@@ -195,14 +196,17 @@ function AppShell() {
     setAnalysis(null);
     setFileName(file.name);
     setFileSize(file.size);
+    setFileObject(file);
 
     const reader = new FileReader();
     reader.onload = () => {
       setCsvText(String(reader.result ?? ""));
     };
     reader.onerror = () => {
-      setError("Could not read the file. Please try another CSV.");
+      setError("Could not read the file. Please try another CSV/Excel file.");
     };
+    
+    // Try to read as text (works for CSV), Excel files will also be read
     reader.readAsText(file);
   };
 
@@ -224,49 +228,84 @@ function AppShell() {
     setError("");
   };
 
-  const runAnalysis = async (params: AnalysisParams) => {
-    if (!csvText) {
+  const runAnalysis = async (params: AnalysisParams, columnMapping?: ColumnMapping) => {
+    if (!csvText && !fileObject) {
       setError("Upload a CSV file first.");
       return;
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          csv_text: csvText,
-          algorithm: params.algorithm,
-          min_support: params.minSupport,
-          min_confidence: params.minConfidence,
-          min_lift: params.minLift,
-          top_n: params.topN,
-        }),
-      });
+      // For Excel files, send file via multipart form-data
+      if (fileObject && (fileObject.name.toLowerCase().endsWith('.xlsx') || fileObject.name.toLowerCase().endsWith('.xls'))) {
+        const formData = new FormData();
+        formData.append('file', fileObject);
+        formData.append('algorithm', params.algorithm);
+        formData.append('min_support', String(params.minSupport));
+        formData.append('min_confidence', String(params.minConfidence));
+        formData.append('min_lift', String(params.minLift));
+        formData.append('top_n', String(params.topN));
+        formData.append('column_mapping', JSON.stringify(columnMapping ?? {}));
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { error?: string; alert?: string } | null;
-        const message = body?.alert ?? body?.error ?? "Dataset not suitable for mining.";
-        setAnalysis(null);
-        setError(message);
-        window.alert(message);
-        return;
-      }
+        const response = await fetch("http://localhost:5000/api/analyze", {
+          method: "POST",
+          body: formData,
+        });
 
-      const body = (await response.json()) as { analysis: AnalysisResult; algorithm: MiningAlgorithm; alert?: string };
-      setAnalysis(body.analysis);
-      setAnalysisRunAt(new Date().toISOString());
-      setError("");
-      if (body.alert) {
-        window.alert(body.alert);
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { error?: string; alert?: string } | null;
+          const message = body?.alert ?? body?.error ?? "Dataset not suitable for mining.";
+          setAnalysis(null);
+          setError(message);
+          window.alert(message);
+          return;
+        }
+
+        const body = (await response.json()) as { analysis: AnalysisResult; algorithm: MiningAlgorithm; alert?: string };
+        setAnalysis(body.analysis);
+        setAnalysisRunAt(new Date().toISOString());
+        setError("");
+        if (body.alert) {
+          window.alert(body.alert);
+        }
+      } else {
+        // For CSV files, send as JSON
+        const response = await fetch("http://localhost:5000/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            csv_text: csvText,
+            algorithm: params.algorithm,
+            min_support: params.minSupport,
+            min_confidence: params.minConfidence,
+            min_lift: params.minLift,
+            top_n: params.topN,
+            column_mapping: columnMapping ?? {},
+          }),
+        });
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { error?: string; alert?: string } | null;
+          const message = body?.alert ?? body?.error ?? "Dataset not suitable for mining.";
+          setAnalysis(null);
+          setError(message);
+          window.alert(message);
+          return;
+        }
+
+        const body = (await response.json()) as { analysis: AnalysisResult; algorithm: MiningAlgorithm; alert?: string };
+        setAnalysis(body.analysis);
+        setAnalysisRunAt(new Date().toISOString());
+        setError("");
+        if (body.alert) {
+          window.alert(body.alert);
+        }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Analysis failed.";
-      setError(message);
+      const message = err instanceof Error ? err.message : "Unknown error";
       setAnalysis(null);
-      setAnalysisRunAt(null);
+      setError(message);
       window.alert(message);
     }
   };
@@ -374,6 +413,8 @@ function AppShell() {
               <Dashboard
                 fileName={fileName}
                 fileSize={fileSize}
+                fileObject={fileObject}
+                csvText={csvText}
                 error={error}
                 analysis={analysis}
                 onFileChange={onFileChange}
