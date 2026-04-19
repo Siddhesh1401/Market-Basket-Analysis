@@ -314,6 +314,36 @@ function AppShell() {
     setTheme((current) => (current === "light" ? "dark" : "light"));
   };
 
+  const onLoadDemoData = () => {
+    // Create a demo CSV dataset
+    const demoCsvContent = `invoice,date,time,item,quantity,price,country
+INV-2026-001,2026-01-15,10:30:00,Milk,2,3.50,UK
+INV-2026-001,2026-01-15,10:30:00,Bread,1,2.50,UK
+INV-2026-002,2026-01-15,14:45:00,Coffee,1,5.99,UK
+INV-2026-002,2026-01-15,14:45:00,Sugar,2,1.50,UK
+INV-2026-003,2026-01-15,16:20:00,Eggs,1,4.25,UK
+INV-2026-003,2026-01-15,16:20:00,Cheese,1,6.99,UK
+INV-2026-004,2026-01-16,09:15:00,Milk,3,3.50,UK
+INV-2026-004,2026-01-16,09:15:00,Butter,1,5.25,UK
+INV-2026-005,2026-01-16,11:30:00,Coffee,2,5.99,UK
+INV-2026-005,2026-01-16,11:30:00,Bread,1,2.50,UK
+INV-2026-006,2026-01-16,15:00:00,Milk,1,3.50,UK
+INV-2026-006,2026-01-16,15:00:00,Bread,2,2.50,UK
+INV-2026-007,2026-01-17,10:45:00,Eggs,2,4.25,UK
+INV-2026-007,2026-01-17,10:45:00,Milk,1,3.50,UK
+INV-2026-008,2026-01-17,13:20:00,Coffee,1,5.99,UK
+INV-2026-008,2026-01-17,13:20:00,Bread,1,2.50,UK
+INV-2026-009,2026-01-17,16:30:00,Cheese,1,6.99,UK
+INV-2026-009,2026-01-17,16:30:00,Milk,2,3.50,UK`;
+    
+    // Create a File object from the CSV content
+    const blob = new Blob([demoCsvContent], { type: 'text/csv' });
+    const demoFile = new File([blob], 'demo-transactions.csv', { type: 'text/csv' });
+    
+    // Load the demo file
+    onFileSelected(demoFile);
+  };
+
   const navigation = [
     { label: "Home", to: "/", requiresDataset: false },
     { label: "Workspace", to: "/workspace", requiresDataset: false },
@@ -405,7 +435,7 @@ function AppShell() {
         </section>
 
         <Routes>
-          <Route path="/" element={<Home hasDataset={isDatasetLoaded} hasInsights={Boolean(analysis)} fileName={fileName} />} />
+          <Route path="/" element={<Home hasDataset={isDatasetLoaded} hasInsights={Boolean(analysis)} fileName={fileName} onLoadDemoData={onLoadDemoData} />} />
           <Route path="/dashboard" element={<Navigate to="/workspace" replace />} />
           <Route
             path="/workspace"

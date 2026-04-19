@@ -4128,3 +4128,342 @@ button.preset-chip:hover {
     display: none;
   }
 }
+
+/* Tutorial Modal & Demo Data Button */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tutorial-modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.tutorial-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tutorial-header h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.tutorial-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 1.2rem;
+  transition: color 0.2s ease;
+}
+
+.tutorial-close:hover {
+  color: var(--text);
+}
+
+.tutorial-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+
+.tutorial-section {
+  margin-bottom: 1.8rem;
+}
+
+.tutorial-section h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.tutorial-section p {
+  margin: 0.5rem 0;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.tutorial-section ul {
+  margin: 0.8rem 0 0;
+  padding-left: 1.5rem;
+}
+
+.tutorial-section li {
+  margin: 0.5rem 0;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.tutorial-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.tutorial-step {
+  display: flex;
+  gap: 1rem;
+  padding: 0.8rem;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  border-left: 4px solid var(--primary);
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.tutorial-step h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.tutorial-step p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.tutorial-pages {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-top: 0.8rem;
+}
+
+.tutorial-page {
+  padding: 0.8rem;
+  background: var(--surface-soft);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.tutorial-page h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.tutorial-page p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.tutorial-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tutorial-tips li {
+  padding: 0.6rem 0.8rem;
+  margin: 0.4rem 0;
+  background: var(--surface-soft);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+  font-size: 0.9rem;
+}
+
+.tutorial-footer {
+  padding: 1.5rem;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 0.8rem;
+}
+
+.tutorial-footer .primary-cta {
+  flex: 1;
+}
+
+/* Hero Actions Container */
+.hero-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+  flex-wrap: wrap;
+}
+
+/* Secondary Button (Quick Guide) */
+.secondary-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 12px;
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text-strong);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.secondary-cta:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.secondary-cta:active {
+  transform: translateY(0);
+}
+
+/* Demo Data Button in Status Card */
+.demo-data-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin-top: 0.8rem;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-data-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.demo-data-btn:active {
+  transform: translateY(0);
+}
+
+/* Dark Mode Adjustments */
+[data-theme="dark"] .tutorial-modal {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .tutorial-header {
+  border-bottom-color: var(--line);
+}
+
+[data-theme="dark"] .tutorial-step,
+[data-theme="dark"] .tutorial-page,
+[data-theme="dark"] .tutorial-tips li {
+  background: var(--surface-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .secondary-cta {
+  background: var(--surface-soft);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+[data-theme="dark"] .secondary-cta:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .demo-data-btn {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+[data-theme="dark"] .demo-data-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .hero-actions {
+    flex-direction: column;
+  }
+
+  .hero-actions .primary-cta,
+  .hero-actions .secondary-cta {
+    width: 100%;
+  }
+
+  .tutorial-modal {
+    max-width: calc(100vw - 2rem);
+  }
+
+  .tutorial-pages {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-step {
+    flex-direction: column;
+  }
+
+  .step-number {
+    align-self: flex-start;
+  }
+}
