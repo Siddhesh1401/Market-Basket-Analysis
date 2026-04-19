@@ -227,11 +227,215 @@ Scope:
 
 ---
 
-## Change Management
+## Phase 5 - AI-Powered Insights with Gemini
 
-For each phase:
+### Overview
 
-1. Implement
-2. Validate (build and checks)
-3. Update documentation
-4. Record decisions in this roadmap
+Extend Gemini AI integration beyond schema mapping to provide intelligent insights, explanations, and recommendations across the platform. This phase focuses on making complex business insights accessible to non-technical users through natural language explanations.
+
+### 5.1 Rule Explanation Engine
+
+Status: Planned
+
+Goal: Auto-generate business-friendly explanations for association rules using Gemini.
+
+Scope:
+
+- Add explanation endpoint on backend: `POST /api/rule-explanation`
+- Accepts rule (antecedent, consequent, support, confidence, lift)
+- Calls Gemini with structured prompt
+- Returns business interpretation, impact estimate, and action recommendations
+- Frontend: Add "Explain" button/icon to each rule in Reports page
+- Show explanation in modal/popover with:
+  - Plain-language business insight
+  - Estimated impact (AOV increase, conversion uplift, etc.)
+  - Actionable recommendations (bundle, pricing, placement)
+  - Copy-to-clipboard for stakeholder sharing
+
+Acceptance criteria:
+
+- Users can click any rule and see AI-generated business explanation
+- Explanations are non-technical and actionable
+- Fits within Gemini rate limits (low usage, on-demand)
+
+### 5.2 Data Quality Assessment
+
+Status: Planned
+
+Goal: Validate uploaded data and warn users of issues before analysis.
+
+Scope:
+
+- Add assessment endpoint: `POST /api/data-quality-check`
+- Analyzes CSV for:
+  - Missing values (% per column)
+  - Duplicate/malformed invoices
+  - Outlier quantities/prices
+  - Data type consistency
+  - Completeness ratio
+- Frontend: Show results card in Workspace after upload
+- Display warnings with severity (high/medium/low)
+- Suggest corrective actions
+- Let users proceed or upload different file
+
+Acceptance criteria:
+
+- Data issues are caught and surfaced before analysis
+- Users understand data limitations and impact on results
+- Prevents garbage-in-garbage-out analysis
+
+### 5.3 Intelligent Parameter Recommendations
+
+Status: Planned
+
+Goal: Suggest optimal analysis parameters based on dataset characteristics.
+
+Scope:
+
+- Add recommendation endpoint: `POST /api/parameter-recommendations`
+- Analyzes dataset size, sparsity, transaction count
+- Recommends algorithm (Apriori vs FP-Growth)
+- Recommends thresholds (min_support, min_confidence, min_lift)
+- Explains trade-offs (more rules vs quality)
+- Frontend: Add suggestion card in Configure step
+- Show "Gemini Recommends" section with reasoning
+- Let user apply or override suggestions
+
+Acceptance criteria:
+
+- Users can get guidance on parameter tuning
+- Beginners don't have to guess optimal values
+- Explanation shows why recommendations matter
+
+### 5.4 Rule Auto-Categorization and Naming
+
+Status: Planned
+
+Goal: Auto-label rules with business-friendly categories and names.
+
+Scope:
+
+- Add categorization endpoint: `POST /api/rule-categories`
+- Accepts rule batch (all rules from analysis)
+- Calls Gemini to categorize rules into business domains:
+  - "Morning Staple Bundle"
+  - "Cross-Sell Opportunity"
+  - "Loss Leader Pairing"
+  - "Premium Upsell"
+  - etc.
+- Returns category, strength indicator, and emoji
+- Frontend: Show category tags on rules in Reports
+- Add filter by category for easy exploration
+- Include in export (CSV, PDF) with category info
+
+Acceptance criteria:
+
+- Rules are organized by business meaning, not just metrics
+- Non-technical stakeholders can understand rule groups
+- Improves report presentation
+
+### 5.5 Natural Language Analytics Query Engine
+
+Status: Planned (Future)
+
+Goal: Allow users to ask questions about their data in natural language.
+
+Scope:
+
+- Add query endpoint: `POST /api/analytics-query`
+- User types: "Which products should I bundle together?"
+- Endpoint parses query with Gemini
+- Routes to appropriate analysis (top rules by lift, etc.)
+- Returns narrative answer with supporting data
+- Frontend: Add chat-style interface in Prediction/Analytics page
+- Example queries:
+  - "What's the best product to promote with coffee?"
+  - "Which customers buy the most expensive items?"
+  - "How should I arrange store shelves?"
+  - "What discount would increase basket value?"
+
+Acceptance criteria:
+
+- Users can explore data through conversational interface
+- Answers are contextual and actionable
+- Works with existing backend analyses
+
+### 5.6 Anomaly and Opportunity Detection
+
+Status: Planned (Future)
+
+Goal: Automatically surface hidden patterns and anomalies.
+
+Scope:
+
+- Add anomaly endpoint: `POST /api/detect-anomalies`
+- Identifies:
+  - Unexpected non-correlations (complementary products NOT bought together)
+  - Pricing anomalies (products that should cost more/less)
+  - Segment anomalies (unusual patterns for specific customer groups)
+  - Seasonal opportunities (products bought together in specific periods)
+- Frontend: Show "Insights" panel in Reports with auto-discovered items
+- Prioritize by business impact
+- Explain why each anomaly matters
+
+Acceptance criteria:
+
+- System finds non-obvious business opportunities
+- Users discover patterns they wouldn't have looked for
+- Increases strategic decision-making value
+
+### 5.7 Stakeholder Report Generator
+
+Status: Planned (Phase 6+)
+
+Goal: Generate executive-ready reports with AI narration.
+
+Scope:
+
+- Add report endpoint: `POST /api/generate-report`
+- Inputs: analysis results, filters, branding options
+- Gemini generates:
+  - Executive summary (2-3 paragraphs)
+  - Key findings with business impact
+  - Strategic recommendations
+  - Risk/limitation disclaimers
+- Output formats: PDF, HTML, Markdown
+- Frontend: One-click "Generate Executive Report" in Reports page
+- Include charts, rules, and AI narrative
+- Customizable sections and branding
+
+Acceptance criteria:
+
+- Stakeholders receive insights in boardroom-ready format
+- Eliminates need for manual report writing
+- Increases product value for enterprise users
+
+---
+
+## Phase 6+ - Long-Term Vision (Advanced)
+
+### 6.1 Real-Time Recommendation API
+
+- Webhook support for live transaction stream
+- Return recommendations in <100ms
+- PII-safe filtering
+
+### 6.2 Multi-Tenant SaaS Platform
+
+- Workspace per customer
+- Billing integration
+- Team collaboration features
+
+### 6.3 Mobile App
+
+- iOS/Android native apps
+- On-the-go basket recommendations
+- Offline mode support
+
+### 6.4 Advanced ML Models
+
+- Demand forecasting
+- Customer lifetime value prediction
+- Churn risk scoring
+
+---
