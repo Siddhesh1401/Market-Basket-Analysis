@@ -88,7 +88,7 @@ def suggest_schema_mapping_with_gemini(
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.1,
+            "temperature": 0.0,
             "topP": 0.8,
             "maxOutputTokens": 800,
             "responseMimeType": "application/json",

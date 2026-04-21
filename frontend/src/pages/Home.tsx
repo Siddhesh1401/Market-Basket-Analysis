@@ -72,7 +72,7 @@ function Home({ hasDataset, hasInsights, fileName, onLoadDemoData }: HomeProps) 
     },
     {
       title: "Prediction",
-      description: "Estimate purchase likelihood and likely next products.",
+      description: "Score purchase likelihood and get decision guidance for intervention timing.",
       icon: FiPlayCircle,
       route: hasDataset ? "/prediction" : "/workspace",
       status: hasDataset ? (hasInsights ? "ready" : "pending") : "locked",

@@ -302,7 +302,7 @@ function BasketSimulator({ analysis, activeFileName, analyzedAt }: BasketSimulat
         <p className="hero-eyebrow">Basket Simulator</p>
         <h1>Scenario Design Studio</h1>
         <p>
-          Build one basket scenario, run recommendations, and convert results into an action plan you can use immediately.
+          Build one basket scenario, run recommendation experiments, and compare what-if outcomes.
         </p>
         <div className="hero-inline-metrics">
           <span>
@@ -315,6 +315,9 @@ function BasketSimulator({ analysis, activeFileName, analyzedAt }: BasketSimulat
             <FiTarget /> Actionable Outcome Cards
           </span>
         </div>
+        <p className="sim-results-context" style={{ marginTop: "0.8rem" }}>
+          Scenario mode: this page is for recommendation experiments, not likelihood scoring.
+        </p>
       </section>
 
       <section className="simulator-grid simulator-grid-v2">
@@ -501,8 +504,8 @@ function BasketSimulator({ analysis, activeFileName, analyzedAt }: BasketSimulat
         <article className="surface-card simulator-results simulator-results-v2">
           <div className="stage-head stage-head-slim">
             <p className="stage-kicker">Step 2 of 2</p>
-            <h2>Recommendations</h2>
-            <p>Ranked suggestions for your basket scenario.</p>
+            <h2>Scenario Recommendations</h2>
+            <p>Ranked suggestions for this what-if basket scenario.</p>
           </div>
 
           {analysis && (

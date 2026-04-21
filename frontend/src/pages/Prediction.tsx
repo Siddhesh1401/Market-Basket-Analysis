@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { NavLink } from "react-router-dom";
 import { FiBell, FiCopy, FiDownload, FiInfo, FiLoader, FiPlus, FiSearch, FiTarget, FiTrendingUp, FiX } from "react-icons/fi";
 import type { AnalysisResult } from "../types";
 
@@ -10,13 +11,19 @@ type PredictionProps = {
 interface PurchasePrediction {
   likelihood_percent: number;
   confidence: string;
-  next_products: Array<{
-    product: string;
-    probability: number;
-  }>;
   explanation: string;
   risk_factors: string[];
 }
+
+type PredictApiResponse = {
+  will_buy_high_quantity?: boolean | number;
+  likelihood_percent?: number;
+  confidence?: number;
+  confidence_label?: string;
+  explanation?: string;
+  risk_factors?: string[];
+  error?: string;
+};
 
 function Prediction({ analysis, datasetLoaded }: PredictionProps) {
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -28,7 +35,9 @@ function Prediction({ analysis, datasetLoaded }: PredictionProps) {
   const [copyFeedback, setCopyFeedback] = useState("");
 
   const allProducts = useMemo(() => {
-    if (!analysis) return [];
+    if (!analysis) {
+      return [];
+    }
     const products = new Set<string>();
     analysis.productCatalog?.forEach((item) => products.add(item.trim()));
     analysis.itemFrequency.forEach((item) => products.add(item.item));
@@ -36,19 +45,23 @@ function Prediction({ analysis, datasetLoaded }: PredictionProps) {
       rule.antecedent.split(",").forEach((item) => products.add(item.trim()));
       rule.consequent.split(",").forEach((item) => products.add(item.trim()));
     });
-    return Array.from(products).sort();
+    return Array.from(products).filter((item) => item.length > 0).sort();
   }, [analysis]);
 
   const filteredProducts = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (needle.length < 2) return [];
+    if (needle.length < 2) {
+      return [];
+    }
     return allProducts
       .filter((item) => !selectedItems.includes(item) && item.toLowerCase().includes(needle))
       .slice(0, 50);
   }, [allProducts, query, selectedItems]);
 
   const popularProducts = useMemo(() => {
-    if (!analysis) return [];
+    if (!analysis) {
+      return [];
+    }
     return analysis.itemFrequency
       .map((entry) => entry.item)
       .filter((item) => !selectedItems.includes(item))
@@ -103,22 +116,38 @@ function Prediction({ analysis, datasetLoaded }: PredictionProps) {
         throw new Error(message);
       }
 
-      const body = (await response.json()) as any;
-      if (body && body.will_buy_high_quantity !== undefined) {
-        const likelihood = body.likelihood_percent || Math.round(body.will_buy_high_quantity * 100);
-        setPredictionResult({
-          likelihood_percent: likelihood,
-          confidence: body.confidence_label || (body.confidence > 0.8 ? "High" : body.confidence > 0.6 ? "Moderate" : "Low"),
-          next_products: (body.next_products || []).map((item: any) => ({
-            product: item.product || item.item,
-            probability: item.probability || 0.5,
-          })),
-          explanation: body.explanation || `Based on the selected products, there is a ${likelihood}% likelihood of high-quantity purchase.`,
-          risk_factors: body.risk_factors || [],
-        });
-      } else {
-        throw new Error(body?.error || "No prediction result returned.");
+      const body = (await response.json()) as PredictApiResponse;
+      if (body.will_buy_high_quantity === undefined) {
+        throw new Error(body.error ?? "No prediction result returned.");
       }
+
+      const rawLikelihood =
+        typeof body.likelihood_percent === "number"
+          ? body.likelihood_percent
+          : typeof body.will_buy_high_quantity === "number"
+            ? Math.round(body.will_buy_high_quantity * 100)
+            : body.will_buy_high_quantity
+              ? 75
+              : 25;
+
+      const confidenceLabel =
+        body.confidence_label ??
+        (typeof body.confidence === "number"
+          ? body.confidence > 0.8
+            ? "High"
+            : body.confidence > 0.6
+              ? "Moderate"
+              : "Low"
+          : "Moderate");
+
+      setPredictionResult({
+        likelihood_percent: Math.max(0, Math.min(100, rawLikelihood)),
+        confidence: confidenceLabel,
+        explanation:
+          body.explanation ??
+          `Based on the selected products, there is a ${Math.max(0, Math.min(100, rawLikelihood))}% likelihood of conversion.`,
+        risk_factors: Array.isArray(body.risk_factors) ? body.risk_factors : [],
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Prediction failed.";
       setPredictionError(message);
@@ -127,61 +156,119 @@ function Prediction({ analysis, datasetLoaded }: PredictionProps) {
     }
   };
 
-  const copyResult = () => {
-    if (!predictionResult) return;
+  const getDecisionPlan = (likelihood: number, confidence: string) => {
+    const confidenceIsHigh = confidence.toLowerCase().includes("high");
 
-    const text = `Purchase Likelihood Prediction
+    if (likelihood >= 70 && confidenceIsHigh) {
+      return {
+        title: "High Intent: Act Now",
+        action: "Trigger premium upsell or bundle offer immediately.",
+        window: "Best action window: now to next 1 hour",
+      };
+    }
+
+    if (likelihood >= 45) {
+      return {
+        title: "Medium Intent: Nudge",
+        action: "Use gentle incentives (small discount, free shipping threshold, reminder prompt).",
+        window: "Best action window: same session or within 24 hours",
+      };
+    }
+
+    return {
+      title: "Low Intent: Warm-Up",
+      action: "Avoid heavy discounting now; use education, trust signals, or personalized content first.",
+      window: "Best action window: nurture over next 2-7 days",
+    };
+  };
+
+  const copyResult = () => {
+    if (!predictionResult) {
+      return;
+    }
+
+    const plan = getDecisionPlan(predictionResult.likelihood_percent, predictionResult.confidence);
+    const text = `Purchase Likelihood Decision Brief
 Likelihood: ${predictionResult.likelihood_percent}%
 Confidence: ${predictionResult.confidence}
-
-Next Products Likely to Buy:
-${predictionResult.next_products.map((p) => `- ${p.product} (${(p.probability * 100).toFixed(0)}%)`).join("\n")}
-
+Decision: ${plan.title}
+Recommended Action: ${plan.action}
+Action Window: ${plan.window}
 Explanation: ${predictionResult.explanation}
+Risk Factors: ${predictionResult.risk_factors.length > 0 ? predictionResult.risk_factors.join(", ") : "None detected"}`;
 
-Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
-
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text);
     setCopyFeedback("Copied!");
     setTimeout(() => setCopyFeedback(""), 2000);
   };
 
-  const addTopProduct = () => {
-    if (predictionResult && predictionResult.next_products.length > 0) {
-      const topProduct = predictionResult.next_products[0].product;
-      if (!selectedItems.includes(topProduct)) {
-        toggleItem(topProduct);
-      }
+  const exportBrief = () => {
+    if (!predictionResult) {
+      return;
     }
+
+    const plan = getDecisionPlan(predictionResult.likelihood_percent, predictionResult.confidence);
+    const content = [
+      "Purchase Likelihood Decision Brief",
+      `Likelihood: ${predictionResult.likelihood_percent}%`,
+      `Confidence: ${predictionResult.confidence}`,
+      `Decision: ${plan.title}`,
+      `Recommended Action: ${plan.action}`,
+      `Action Window: ${plan.window}`,
+      `Explanation: ${predictionResult.explanation}`,
+      `Risk Factors: ${predictionResult.risk_factors.length > 0 ? predictionResult.risk_factors.join(" | ") : "None"}`,
+    ].join("\n");
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "prediction-decision-brief.txt";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const getLikelihoodColor = (percent: number) => {
-    if (percent >= 70) return "green";
-    if (percent >= 40) return "blue";
+    if (percent >= 70) {
+      return "green";
+    }
+    if (percent >= 40) {
+      return "blue";
+    }
     return "amber";
   };
 
   const getConfidenceLabel = (conf: string) => {
-    if (conf.includes("High")) return "green";
-    if (conf.includes("Moderate")) return "blue";
+    if (conf.toLowerCase().includes("high")) {
+      return "green";
+    }
+    if (conf.toLowerCase().includes("moderate")) {
+      return "blue";
+    }
     return "amber";
   };
+
+  const plan = predictionResult
+    ? getDecisionPlan(predictionResult.likelihood_percent, predictionResult.confidence)
+    : null;
 
   return (
     <div className="page-shell">
       <section className="hero-mini workflow-hero">
         <p className="hero-eyebrow">Predictive Analytics</p>
         <h1>Purchase Likelihood Predictor</h1>
-        <p>Build a basket and predict the likelihood of purchase completion with confidence metrics and explanations.</p>
+        <p>
+          Use this page for probability scoring and decision timing. For product recommendation scenarios, use Simulator.
+        </p>
         <div className="hero-inline-metrics">
           <span>
-            <FiTarget /> Basket-Based Prediction
+            <FiTarget /> Intent Probability
           </span>
           <span>
-            <FiTrendingUp /> Likelihood Scoring
+            <FiTrendingUp /> Decision Guidance
           </span>
           <span>
-            <FiBell /> Next Product Recommendations
+            <FiBell /> Action Timing
           </span>
         </div>
       </section>
@@ -190,8 +277,8 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
         <article className="surface-card analyzer-builder analyzer-builder-v2">
           <div className="stage-head stage-head-slim">
             <p className="stage-kicker">Step 1 of 2</p>
-            <h2>Build Prediction Basket</h2>
-            <p>Add products the customer has shown interest in.</p>
+            <h2>Build Prediction Context</h2>
+            <p>Add products currently in the customer context.</p>
           </div>
 
           {!analysis && (
@@ -207,7 +294,7 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
           )}
 
           <article className="sim-card">
-            <p className="sim-card-title">Current Basket ({selectedItems.length})</p>
+            <p className="sim-card-title">Current Context ({selectedItems.length})</p>
             <div className="selected-basket selected-basket-v2">
               {selectedItems.length === 0 ? (
                 <p className="muted-text">No items yet. Add products below to start prediction.</p>
@@ -271,7 +358,7 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
           <div className="profile-actions sim-primary-actions">
             <button className="primary-btn" type="button" onClick={runPrediction} disabled={isLoading || !analysis}>
               {isLoading ? <FiLoader className="spin" /> : <FiBell />}
-              {isLoading ? "Predicting..." : "Predict Purchase"}
+              {isLoading ? "Predicting..." : "Score Intent"}
             </button>
           </div>
         </article>
@@ -279,23 +366,23 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
         <article className="surface-card analyzer-results analyzer-results-v2">
           <div className="stage-head stage-head-slim">
             <p className="stage-kicker">Step 2 of 2</p>
-            <h2>Prediction Results</h2>
-            <p>Likelihood score and next product recommendations.</p>
+            <h2>Decision Scorecard</h2>
+            <p>Probability, confidence, timing, and recommended action.</p>
           </div>
 
           {!hasRequested && (
             <article className="sim-empty-state">
               <FiBell />
-              <h3>Ready to predict?</h3>
-              <p>Add products to basket and click Predict Purchase to estimate purchase likelihood.</p>
+              <h3>Ready to score intent?</h3>
+              <p>Add products and click Score Intent to generate a decision brief.</p>
             </article>
           )}
 
           {hasRequested && isLoading && (
             <article className="sim-empty-state">
               <FiLoader className="spin" />
-              <h3>Analyzing basket...</h3>
-              <p>Calculating purchase likelihood based on product co-patterns.</p>
+              <h3>Scoring purchase intent...</h3>
+              <p>Calculating likelihood and confidence from analysis patterns.</p>
             </article>
           )}
 
@@ -308,7 +395,7 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
             </article>
           )}
 
-          {hasRequested && !isLoading && !predictionError && predictionResult && (
+          {hasRequested && !isLoading && !predictionError && predictionResult && plan && (
             <div className="pred-results-grid">
               <article className="pred-likelihood-card">
                 <div className="pred-likelihood-inner">
@@ -323,26 +410,20 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
               </article>
 
               <article className="pred-next-products">
-                <p className="pred-section-title">Top Next Products</p>
-                {predictionResult.next_products.map((product, idx) => (
-                  <div key={product.product} className="pred-product-row">
-                    <span className="pred-product-rank">#{idx + 1}</span>
-                    <div className="pred-product-info">
-                      <p className="pred-product-name">{product.product}</p>
-                      <div className="pred-probability-bar">
-                        <span style={{ width: `${Math.max(5, product.probability * 100)}%` }} />
-                      </div>
-                    </div>
-                    <span className="pred-product-percent">{(product.probability * 100).toFixed(0)}%</span>
-                  </div>
-                ))}
-                <button className="pred-add-top" onClick={addTopProduct}>
-                  <FiPlus /> Add top suggestion to basket
-                </button>
+                <p className="pred-section-title">Decision Recommendation</p>
+                <p className="pred-explanation-text"><strong>{plan.title}</strong></p>
+                <p className="pred-explanation-text">{plan.action}</p>
+                <p className="pred-explanation-text">{plan.window}</p>
+                <p className="pred-explanation-text" style={{ marginTop: "0.8rem" }}>
+                  Need recommendation ideas? Open the scenario workspace.
+                </p>
+                <NavLink to="/simulator" className="ghost-btn" style={{ marginTop: "0.6rem", display: "inline-flex" }}>
+                  Open Simulator
+                </NavLink>
               </article>
 
               <article className="pred-explanation">
-                <p className="pred-section-title">Why This Prediction?</p>
+                <p className="pred-section-title">Why This Score?</p>
                 <p className="pred-explanation-text">{predictionResult.explanation}</p>
               </article>
 
@@ -359,10 +440,10 @@ Risk Factors: ${predictionResult.risk_factors.join(", ")}`;
 
               <div className="pred-actions">
                 <button className="pred-action-btn" onClick={copyResult}>
-                  <FiCopy /> {copyFeedback || "Copy Result"}
+                  <FiCopy /> {copyFeedback || "Copy Decision Brief"}
                 </button>
-                <button className="pred-action-btn">
-                  <FiDownload /> Export as CSV
+                <button className="pred-action-btn" onClick={exportBrief}>
+                  <FiDownload /> Export Brief
                 </button>
               </div>
             </div>

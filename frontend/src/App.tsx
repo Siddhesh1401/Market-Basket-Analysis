@@ -59,11 +59,11 @@ const PAGE_GUIDES: Record<string, PageGuide> = {
   simulator: {
     eyebrow: "Recommendation Studio",
     title: "Basket Scenario Simulator",
-    description: "Design basket scenarios and test goal-driven recommendations from the active analysis.",
+    description: "Design what-if basket scenarios and test recommendation strategies from the active analysis.",
     actions: [
       "Create or search basket compositions",
       "Choose a business goal and simulation settings",
-      "Generate ranked next-product recommendations",
+      "Compare recommendation outcomes for scenario planning",
     ],
     requirement: "analysis",
   },
@@ -81,11 +81,11 @@ const PAGE_GUIDES: Record<string, PageGuide> = {
   prediction: {
     eyebrow: "Predictive Intelligence",
     title: "Purchase Likelihood Prediction",
-    description: "Estimate purchase likelihood and identify likely next products from basket context.",
+    description: "Estimate purchase likelihood, confidence, and action timing for a basket context.",
     actions: [
-      "Build a customer basket",
+      "Build a customer basket context",
       "Generate likelihood and confidence outputs",
-      "Apply top-next-product recommendations",
+      "Use decision guidance for when and how to intervene",
     ],
     requirement: "analysis",
   },
