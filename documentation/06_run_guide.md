@@ -6,117 +6,148 @@
 - Node.js 18+
 - npm
 
----
+## For New Contributors (Clone to Run)
 
-## Backend Setup
+If you are setting this up for the first time, follow this exact order.
+
+### 1) Clone the project
 
 ```bash
-cd "C:/Users/SIDDHESH/Desktop/market basket/backend"
-python -m venv .venv
-./.venv/Scripts/Activate.ps1
-python -m pip install --upgrade pip setuptools wheel
-pip install -r requirements.txt
-python app.py
+git clone <your-repo-url>
+cd "market basket"
 ```
 
-Backend default URL:
+## First-Time Setup
 
-- `http://localhost:5000`
+Run these once.
 
-Quick checks:
+### Backend
 
-- `GET /api/health`
-- `GET /`
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
 
----
+### Frontend
 
-## Frontend Setup
+Open a new terminal:
 
 ```bash
 cd frontend
 npm install
-npm run dev
 ```
 
-Frontend default URL:
+## Gemini API Setup (Schema Mapping AI)
 
-- `http://localhost:5173`
+This is optional. The app still works without Gemini using rule-based mapping.
 
----
+Project owner will provide these to contributors:
 
-## Daily Startup (After First Setup)
+- GEMINI_API_KEY (credential)
+- Approved GEMINI_MODEL
+- Allowed rate limits and usage policy (for example requests/minute, requests/day, quota rules)
 
-You do not reinstall everything every time you open VS Code.
+Setup:
 
-Backend terminal:
+1. In backend folder, copy `.env.example` to `.env`
+2. Put the owner-provided values in `.env`
+
+Example:
 
 ```bash
-cd "C:/Users/SIDDHESH/Desktop/market basket/backend"
-./.venv/Scripts/Activate.ps1
+GEMINI_API_KEY=owner_provided_key
+GEMINI_MODEL=owner_approved_model
+```
+
+Important:
+
+- Never commit `backend/.env`
+- Never hardcode API keys in source code
+- If you do not have credentials yet, continue without Gemini (app is still usable)
+
+## Start the App
+
+### Terminal 1 (Backend)
+
+```bash
+cd backend
+.\.venv\Scripts\Activate.ps1
 python app.py
 ```
 
-Frontend terminal:
+Backend runs on `http://localhost:5000`.
+
+### Terminal 2 (Frontend)
 
 ```bash
-cd "C:/Users/SIDDHESH/Desktop/market basket/frontend"
+cd frontend
 npm run dev
 ```
 
-Run installs again only when needed:
+Frontend runs on `http://localhost:5173`.
 
-- Run `pip install -r requirements.txt` only if `requirements.txt` changed, venv was recreated, or you are on a new machine.
-- Run `npm install` only if `package.json` or `package-lock.json` changed, or `node_modules` was removed.
-- Run `python -m venv .venv` only once per project environment (or when recreating env).
+## Daily Startup
 
----
+After first-time setup, use only these two commands:
 
-## Core End-to-End Check
+```bash
+cd backend
+.\.venv\Scripts\Activate.ps1
+python app.py
+```
 
-1. Open Workspace
-2. Upload `sample_transactions.csv` (or another valid CSV)
-3. Click Analyze Dataset
-4. Confirm KPI cards and charts populate
-5. Open Reports and verify visualizations render
+```bash
+cd frontend
+npm run dev
+```
 
----
+## Quick End-to-End Check
 
-## Optional Model Training (for model endpoints)
+1. Open `http://localhost:5173`
+2. Upload `sample_transactions.csv`
+3. Click **Analyze Dataset**
+4. Confirm charts/KPIs load in Workspace or Reports
+5. Open **BI** page and verify Report/Data/Model views load
+6. Open backend root `http://localhost:5000` and confirm endpoint list appears
+
+Quick API checks:
+
+- `GET http://localhost:5000/api/health`
+- `GET http://localhost:5000/api/bi/overview` (works after dataset analysis)
+- `POST http://localhost:5000/api/schema-suggest` (Gemini-assisted mapping if key is configured)
+
+## When to Reinstall
+
+- Run `pip install -r requirements.txt` only if Python dependencies changed, or `.venv` was recreated.
+- Run `npm install` only if `package.json`/lockfile changed, or `node_modules` was removed.
+
+## Optional: Train Models
+
+Use this only if you need trained-model/fallback endpoints.
 
 ```bash
 cd backend
 python train.py
 ```
 
-This generates model files in `backend/models/` for endpoints like:
+This writes model files into `backend/models/`.
 
-- `/api/recommendations`
-- `/api/rules`
-- `/api/segments`
-- `/api/predict`
+## Basic Troubleshooting
 
----
-
-## Known Environment Caveat
-
-If you see NumPy/PyArrow compatibility warnings in local Python environment:
-
-- Create and use an isolated virtual environment
-- Reinstall dependencies in that environment
-- Prefer consistent versions from `backend/requirements.txt`
-
----
+- Backend fails to start: activate `.venv` and reinstall `pip install -r requirements.txt`
+- Frontend fails to start: run `npm install` in `frontend`
+- BI/advanced pages show no data: upload and analyze dataset first in Workspace
+- Gemini not used: check `backend/.env` values and restart backend
 
 ## Build Checks
-
-Frontend build:
 
 ```bash
 cd frontend
 npm run build
 ```
-
-Backend syntax check:
 
 ```bash
 cd backend

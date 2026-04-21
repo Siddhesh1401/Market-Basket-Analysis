@@ -4,6 +4,7 @@ import { FiDatabase, FiLock, FiMoon, FiSun } from "react-icons/fi";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
+import BIAnalytics from "./pages/BIAnalytics";
 import BasketSimulator from "./pages/BasketSimulator";
 import Segmentation from "./pages/Segmentation";
 import Prediction from "./pages/Prediction";
@@ -53,6 +54,17 @@ const PAGE_GUIDES: Record<string, PageGuide> = {
       "Review KPI and distribution visualizations",
       "Inspect top association rules and itemsets",
       "Use outputs for business reviews and planning",
+    ],
+    requirement: "analysis",
+  },
+  bi: {
+    eyebrow: "Business Intelligence",
+    title: "BI Dashboard and Drill-Down Analytics",
+    description: "Explore transaction KPIs, product trends, and invoice-level drill-down from the active dataset.",
+    actions: [
+      "Review KPI cards and trend charts",
+      "Inspect product-level metrics with co-purchase detail",
+      "Explore transaction-level records and top rule snapshots",
     ],
     requirement: "analysis",
   },
@@ -113,6 +125,9 @@ function resolveGuide(pathname: string): PageGuide {
   }
   if (pathname.startsWith("/reports")) {
     return PAGE_GUIDES.reports;
+  }
+  if (pathname.startsWith("/bi")) {
+    return PAGE_GUIDES.bi;
   }
   if (pathname.startsWith("/simulator") || pathname.startsWith("/basket-simulator")) {
     return PAGE_GUIDES.simulator;
@@ -348,6 +363,7 @@ INV-2026-009,2026-01-17,16:30:00,Milk,2,3.50,UK`;
     { label: "Home", to: "/", requiresDataset: false },
     { label: "Workspace", to: "/workspace", requiresDataset: false },
     { label: "Reports", to: "/reports", requiresDataset: true },
+    { label: "BI", to: "/bi", requiresDataset: true },
     { label: "Simulator", to: "/simulator", requiresDataset: true },
     { label: "Segmentation", to: "/segmentation", requiresDataset: true },
     { label: "Prediction", to: "/prediction", requiresDataset: true },
@@ -459,6 +475,14 @@ INV-2026-009,2026-01-17,16:30:00,Milk,2,3.50,UK`;
             element={
               <DatasetLockRoute isDatasetLoaded={isDatasetLoaded} pageTitle="Reports">
                 <Reports analysis={analysis} />
+              </DatasetLockRoute>
+            }
+          />
+          <Route
+            path="/bi"
+            element={
+              <DatasetLockRoute isDatasetLoaded={isDatasetLoaded} pageTitle="BI Analytics">
+                <BIAnalytics analysis={analysis} datasetLoaded={isDatasetLoaded} />
               </DatasetLockRoute>
             }
           />

@@ -5,6 +5,9 @@ from mining_live import analyze_csv_text, suggest_column_mapping, file_bytes_to_
 from gemini_schema import suggest_schema_mapping_with_gemini
 import traceback
 import os
+from io import StringIO
+from typing import Any
+import pandas as pd
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -25,8 +28,27 @@ ACTIVE_ANALYSIS_CONTEXT = {
     'rules': [],
     'algorithm': None,
     'column_mapping': {},
+    'analysis': None,
+    'csv_text': '',
     'ready': False,
 }
+
+BI_CUSTOMER_KEYS = [
+    'customerid',
+    'customer_id',
+    'customer',
+    'userid',
+    'user_id',
+    'memberid',
+]
+
+BI_INVOICE_KEYS = ['invoice', 'invoiceno', 'invoice_no', 'transaction', 'order', 'orderid', 'order_id']
+BI_ITEM_KEYS = ['item', 'product', 'description', 'product_name', 'productname', 'sku', 'stockcode']
+BI_COUNTRY_KEYS = ['country', 'region', 'market', 'nation']
+BI_DATE_KEYS = ['date', 'invoice_date', 'invoicedate', 'orderdate', 'purchase_date', 'datetime']
+BI_TIME_KEYS = ['time', 'invoice_time', 'ordertime', 'purchase_time']
+BI_QUANTITY_KEYS = ['quantity', 'qty', 'itemqty']
+BI_PRICE_KEYS = ['price', 'unitprice', 'unit_price', 'amount']
 
 
 def _split_items(value: str) -> list[str]:
@@ -80,6 +102,364 @@ def _recommend_from_rules(cart_items: list[str], rules: list[dict], top_n: int) 
     )
     return ranked[: max(1, int(top_n))]
 
+
+def _safe_ratio(numerator: float, denominator: float) -> float:
+    if denominator <= 0:
+        return 0.0
+    return float(numerator) / float(denominator)
+
+
+def _resolve_column(df: pd.DataFrame, selected: str | None, aliases: list[str]) -> str | None:
+    if selected:
+        if selected in df.columns:
+            return selected
+        lowered_lookup = {str(col).strip().lower(): str(col) for col in df.columns}
+        return lowered_lookup.get(str(selected).strip().lower())
+
+    lowered_lookup = {str(col).strip().lower().replace(' ', '').replace('_', ''): str(col) for col in df.columns}
+    for alias in aliases:
+        key = alias.strip().lower().replace(' ', '').replace('_', '')
+        if key in lowered_lookup:
+            return lowered_lookup[key]
+    return None
+
+
+def _normalize_bi_mapping(df: pd.DataFrame, csv_text: str, base_mapping: dict[str, Any] | None) -> dict[str, str]:
+    normalized: dict[str, str] = {}
+    if isinstance(base_mapping, dict):
+        for field, column_name in base_mapping.items():
+            resolved = _resolve_column(df, str(column_name), []) if column_name else None
+            if resolved:
+                normalized[str(field)] = resolved
+
+    if normalized.get('item'):
+        return normalized
+
+    try:
+        suggestion = suggest_column_mapping(csv_text=csv_text, sample_rows=8)
+        suggested_mapping = suggestion.get('mapping', {}) if isinstance(suggestion, dict) else {}
+        for field, column_name in suggested_mapping.items():
+            resolved = _resolve_column(df, str(column_name), []) if column_name else None
+            if resolved:
+                normalized[str(field)] = resolved
+    except Exception:
+        # Keep BI available with heuristic fallback even if auto-suggestion fails.
+        pass
+
+    return normalized
+
+
+def _build_bi_working_frame() -> tuple[pd.DataFrame | None, dict[str, str], str | None]:
+    if not ACTIVE_ANALYSIS_CONTEXT.get('ready'):
+        return None, {}, 'No active analysis found. Upload and analyze a dataset in Workspace first.'
+
+    csv_text = str(ACTIVE_ANALYSIS_CONTEXT.get('csv_text', '') or '')
+    if not csv_text.strip():
+        return None, {}, 'No active dataset found. Re-run analysis in Workspace.'
+
+    try:
+        df = pd.read_csv(StringIO(csv_text), on_bad_lines='skip', engine='python')
+    except Exception as exc:
+        return None, {}, f'Could not parse active dataset for BI view: {exc}'
+
+    if df.empty:
+        return None, {}, 'Active dataset has no rows available for BI.'
+
+    mapping = _normalize_bi_mapping(df, csv_text, ACTIVE_ANALYSIS_CONTEXT.get('column_mapping'))
+
+    invoice_col = _resolve_column(df, mapping.get('invoice'), BI_INVOICE_KEYS)
+    item_col = _resolve_column(df, mapping.get('item'), BI_ITEM_KEYS)
+    country_col = _resolve_column(df, mapping.get('country'), BI_COUNTRY_KEYS)
+    date_col = _resolve_column(df, mapping.get('date'), BI_DATE_KEYS)
+    time_col = _resolve_column(df, mapping.get('time'), BI_TIME_KEYS)
+    quantity_col = _resolve_column(df, mapping.get('quantity'), BI_QUANTITY_KEYS)
+    price_col = _resolve_column(df, mapping.get('price'), BI_PRICE_KEYS)
+    customer_col = _resolve_column(df, None, BI_CUSTOMER_KEYS)
+
+    if item_col is None:
+        return None, mapping, 'Item/Product column is missing. BI requires at least one product column.'
+
+    work = pd.DataFrame()
+    work['item'] = df[item_col].fillna('').astype(str).str.strip()
+
+    if invoice_col is None:
+        synthetic_ids = (pd.Series(range(len(df))) // 3).astype(str).str.zfill(7)
+        work['invoice'] = 'SYN-BKT-' + synthetic_ids
+    else:
+        work['invoice'] = df[invoice_col].fillna('').astype(str).str.strip()
+
+    if country_col is None:
+        work['country'] = 'Unknown'
+    else:
+        work['country'] = df[country_col].fillna('Unknown').astype(str).str.strip().replace('', 'Unknown')
+
+    if quantity_col is None:
+        work['quantity'] = 1.0
+    else:
+        parsed_quantity = pd.to_numeric(df[quantity_col], errors='coerce').fillna(1.0)
+        work['quantity'] = parsed_quantity.where(parsed_quantity > 0, 1.0)
+
+    if price_col is None:
+        work['price'] = 0.0
+    else:
+        parsed_price = pd.to_numeric(df[price_col], errors='coerce').fillna(0.0)
+        work['price'] = parsed_price.where(parsed_price > 0, 0.0)
+
+    if customer_col is not None:
+        work['customer'] = df[customer_col].fillna('').astype(str).str.strip()
+    else:
+        work['customer'] = ''
+
+    parsed_datetime = pd.Series(pd.NaT, index=work.index, dtype='datetime64[ns]')
+    if date_col and time_col:
+        combined = df[date_col].fillna('').astype(str).str.strip() + ' ' + df[time_col].fillna('').astype(str).str.strip()
+        parsed_datetime = pd.to_datetime(combined, errors='coerce')
+    elif date_col:
+        parsed_datetime = pd.to_datetime(df[date_col], errors='coerce')
+    elif time_col:
+        parsed_datetime = pd.to_datetime(df[time_col], errors='coerce')
+
+    work['datetime'] = parsed_datetime
+    work['revenue'] = work['quantity'] * work['price']
+
+    work = work[(work['invoice'] != '') & (work['item'] != '')]
+    if work.empty:
+        return None, mapping, 'No valid invoice/item rows were available for BI after cleanup.'
+
+    return work, mapping, None
+
+
+def _build_bi_overview_payload() -> dict[str, Any]:
+    work, mapping, error = _build_bi_working_frame()
+    if error:
+        return {'ready': False, 'error': error}
+
+    assert work is not None
+
+    analysis = ACTIVE_ANALYSIS_CONTEXT.get('analysis') or {}
+    rules = ACTIVE_ANALYSIS_CONTEXT.get('rules') or []
+    total_transactions = int(work['invoice'].nunique())
+    total_rows = int(len(work))
+
+    transaction_agg = (
+        work.groupby('invoice', as_index=False)
+        .agg(
+            itemCount=('item', 'nunique'),
+            totalQuantity=('quantity', 'sum'),
+            totalValue=('revenue', 'sum'),
+            country=('country', 'first'),
+            datetime=('datetime', 'max'),
+        )
+    )
+
+    items_per_basket = float(transaction_agg['itemCount'].mean()) if not transaction_agg.empty else 0.0
+    avg_basket_value = float(transaction_agg['totalValue'].mean()) if not transaction_agg.empty else 0.0
+
+    customer_series = work['customer'].fillna('').astype(str).str.strip()
+    valid_customers = customer_series[customer_series != '']
+    repeat_purchase_rate = None
+    if len(valid_customers) > 0:
+        customer_invoice_counts = work[customer_series != ''].groupby('customer')['invoice'].nunique()
+        repeat_purchase_rate = _safe_ratio(float((customer_invoice_counts > 1).sum()), float(len(customer_invoice_counts)))
+
+    if not work['datetime'].isna().all():
+        trend_frame = work.copy()
+        trend_frame = trend_frame[trend_frame['datetime'].notna()].copy()
+        trend_frame['period'] = trend_frame['datetime'].dt.to_period('M').astype(str)
+
+        tx_trend = trend_frame.groupby('period')['invoice'].nunique().reset_index(name='transactions')
+        rev_trend = trend_frame.groupby('period')['revenue'].sum().reset_index(name='revenue')
+        merged = tx_trend.merge(rev_trend, on='period', how='outer').fillna(0).sort_values('period')
+        merged['avgBasketValue'] = merged.apply(
+            lambda row: _safe_ratio(float(row['revenue']), float(row['transactions'])),
+            axis=1,
+        )
+        transaction_trend = [
+            {
+                'period': str(row['period']),
+                'transactions': int(row['transactions']),
+                'revenue': float(row['revenue']),
+                'avgBasketValue': float(row['avgBasketValue']),
+            }
+            for _, row in merged.iterrows()
+        ]
+    else:
+        monthly = analysis.get('monthlyTransactions', []) if isinstance(analysis, dict) else []
+        transaction_trend = [
+            {
+                'period': str(row.get('month', f'M{i + 1}')),
+                'transactions': int(row.get('transactions', 0)),
+                'revenue': 0.0,
+                'avgBasketValue': 0.0,
+            }
+            for i, row in enumerate(monthly)
+        ]
+
+    product_agg = (
+        work.groupby('item', as_index=False)
+        .agg(
+            transactionCount=('invoice', 'nunique'),
+            quantity=('quantity', 'sum'),
+            revenue=('revenue', 'sum'),
+            avgPrice=('price', 'mean'),
+            lastSeen=('datetime', 'max'),
+        )
+        .sort_values(['transactionCount', 'revenue'], ascending=[False, False])
+    )
+
+    products = []
+    for _, row in product_agg.head(250).iterrows():
+        products.append(
+            {
+                'name': str(row['item']),
+                'transactionCount': int(row['transactionCount']),
+                'quantity': float(row['quantity']),
+                'revenue': float(row['revenue']),
+                'avgPrice': float(row['avgPrice']) if pd.notna(row['avgPrice']) else 0.0,
+                'lastSeen': row['lastSeen'].isoformat() if pd.notna(row['lastSeen']) else None,
+                'transactionShare': _safe_ratio(float(row['transactionCount']), float(total_transactions)),
+            }
+        )
+
+    invoice_items = work.groupby('invoice')['item'].apply(lambda values: sorted(set(str(v) for v in values if str(v).strip()))).to_dict()
+    transactions = []
+    for _, row in transaction_agg.sort_values('datetime', ascending=False, na_position='last').head(300).iterrows():
+        invoice = str(row['invoice'])
+        transactions.append(
+            {
+                'invoice': invoice,
+                'itemCount': int(row['itemCount']),
+                'totalQuantity': float(row['totalQuantity']),
+                'totalValue': float(row['totalValue']),
+                'country': str(row['country']),
+                'datetime': row['datetime'].isoformat() if pd.notna(row['datetime']) else None,
+                'items': invoice_items.get(invoice, [])[:15],
+            }
+        )
+
+    top_rules = sorted(
+        rules,
+        key=lambda entry: (
+            float(entry.get('lift', 0.0) or 0.0),
+            float(entry.get('confidence', 0.0) or 0.0),
+            float(entry.get('support', 0.0) or 0.0),
+        ),
+        reverse=True,
+    )[:180]
+
+    strongest_pair = top_rules[0] if top_rules else None
+
+    payload = {
+        'ready': True,
+        'generatedAt': pd.Timestamp.utcnow().isoformat(),
+        'kpis': {
+            'totalTransactions': total_transactions,
+            'totalRows': total_rows,
+            'uniqueProducts': int(product_agg['item'].nunique()),
+            'totalRevenue': float(work['revenue'].sum()),
+            'averageBasketValue': avg_basket_value,
+            'itemsPerBasket': items_per_basket,
+            'repeatPurchaseRate': repeat_purchase_rate,
+            'highLiftRuleCount': int(
+                sum(1 for rule in rules if float(rule.get('lift', 0.0) or 0.0) >= 1.5)
+            ),
+            'topCrossSellPair': {
+                'antecedent': strongest_pair.get('antecedent', ''),
+                'consequent': strongest_pair.get('consequent', ''),
+                'lift': float(strongest_pair.get('lift', 0.0) or 0.0),
+                'confidence': float(strongest_pair.get('confidence', 0.0) or 0.0),
+            }
+            if strongest_pair
+            else None,
+        },
+        'trends': {
+            'transactions': transaction_trend,
+        },
+        'products': products,
+        'transactions': transactions,
+        'rules': top_rules,
+        'mapping': mapping,
+    }
+
+    return payload
+
+
+def _build_bi_product_detail(product_name: str) -> dict[str, Any]:
+    work, _, error = _build_bi_working_frame()
+    if error:
+        return {'ready': False, 'error': error}
+
+    assert work is not None
+
+    target = str(product_name).strip().lower()
+    if not target:
+        return {'ready': False, 'error': 'Product name is required.'}
+
+    matched_items = sorted({item for item in work['item'].unique().tolist() if str(item).strip().lower() == target})
+    if not matched_items:
+        return {'ready': False, 'error': 'Product not found in active dataset.'}
+
+    canonical_name = matched_items[0]
+    product_rows = work[work['item'].str.lower() == target]
+    invoice_ids = sorted(product_rows['invoice'].unique().tolist())
+
+    invoice_item_sets = work.groupby('invoice')['item'].apply(lambda vals: sorted(set(str(v) for v in vals if str(v).strip()))).to_dict()
+    co_counts: dict[str, int] = {}
+    for invoice in invoice_ids:
+        for item in invoice_item_sets.get(invoice, []):
+            lowered = item.lower()
+            if lowered == target:
+                continue
+            co_counts[item] = co_counts.get(item, 0) + 1
+
+    co_purchased = [
+        {
+            'item': name,
+            'coOccurrenceCount': count,
+            'coOccurrenceRate': _safe_ratio(float(count), float(len(invoice_ids))),
+        }
+        for name, count in sorted(co_counts.items(), key=lambda row: row[1], reverse=True)[:12]
+    ]
+
+    rules = ACTIVE_ANALYSIS_CONTEXT.get('rules') or []
+    related_rules = [
+        rule
+        for rule in rules
+        if target in str(rule.get('antecedent', '')).lower() or target in str(rule.get('consequent', '')).lower()
+    ]
+    related_rules = sorted(
+        related_rules,
+        key=lambda entry: (
+            float(entry.get('lift', 0.0) or 0.0),
+            float(entry.get('confidence', 0.0) or 0.0),
+        ),
+        reverse=True,
+    )[:12]
+
+    trend_points = []
+    dated = product_rows[product_rows['datetime'].notna()].copy()
+    if not dated.empty:
+        dated['period'] = dated['datetime'].dt.to_period('M').astype(str)
+        period_counts = dated.groupby('period')['invoice'].nunique().reset_index(name='transactions')
+        trend_points = [
+            {'period': str(row['period']), 'transactions': int(row['transactions'])}
+            for _, row in period_counts.iterrows()
+        ]
+
+    return {
+        'ready': True,
+        'product': {
+            'name': canonical_name,
+            'transactionCount': int(product_rows['invoice'].nunique()),
+            'quantity': float(product_rows['quantity'].sum()),
+            'revenue': float(product_rows['revenue'].sum()),
+            'avgPrice': float(product_rows['price'].mean()) if not product_rows.empty else 0.0,
+            'topCoPurchased': co_purchased,
+            'relatedRules': related_rules,
+            'trend': trend_points,
+        },
+    }
+
 # ==================== HEALTH CHECK ====================
 @app.route('/', methods=['GET'])
 def api_index():
@@ -96,6 +476,8 @@ def api_index():
             '/api/segments',
             '/api/predict',
             '/api/analytics',
+            '/api/bi/overview',
+            '/api/bi/product-detail',
             '/api/products',
             '/api/fbt',
             '/api/models',
@@ -217,6 +599,8 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
         ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
+        ACTIVE_ANALYSIS_CONTEXT['analysis'] = None
+        ACTIVE_ANALYSIS_CONTEXT['csv_text'] = ''
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
 
         csv_text = ""
@@ -281,6 +665,8 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['rules'] = result.get('rules', [])
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = algorithm
         ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = result.get('schema', {}).get('mapping', column_mapping)
+        ACTIVE_ANALYSIS_CONTEXT['analysis'] = result
+        ACTIVE_ANALYSIS_CONTEXT['csv_text'] = csv_text
         ACTIVE_ANALYSIS_CONTEXT['ready'] = True
 
         return jsonify({
@@ -294,6 +680,8 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
         ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
+        ACTIVE_ANALYSIS_CONTEXT['analysis'] = None
+        ACTIVE_ANALYSIS_CONTEXT['csv_text'] = ''
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({
             'error': reason,
@@ -309,6 +697,8 @@ def analyze_uploaded_csv():
         ACTIVE_ANALYSIS_CONTEXT['rules'] = []
         ACTIVE_ANALYSIS_CONTEXT['algorithm'] = None
         ACTIVE_ANALYSIS_CONTEXT['column_mapping'] = {}
+        ACTIVE_ANALYSIS_CONTEXT['analysis'] = None
+        ACTIVE_ANALYSIS_CONTEXT['csv_text'] = ''
         ACTIVE_ANALYSIS_CONTEXT['ready'] = False
         return jsonify({'error': str(exc)}), 500
 
@@ -462,12 +852,59 @@ def predict_purchase():
 # ==================== ANALYTICS ====================
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
-    """Get overall analytics"""
+    """Get overall analytics (active dataset first, static model fallback second)."""
     try:
+        if ACTIVE_ANALYSIS_CONTEXT.get('ready'):
+            overview = _build_bi_overview_payload()
+            if overview.get('ready'):
+                kpis = overview.get('kpis', {})
+                top_products = {
+                    row.get('name', ''): int(row.get('transactionCount', 0))
+                    for row in overview.get('products', [])[:10]
+                    if row.get('name')
+                }
+                return jsonify({
+                    'total_transactions': int(kpis.get('totalTransactions', 0)),
+                    'total_revenue': float(kpis.get('totalRevenue', 0.0)),
+                    'unique_products': int(kpis.get('uniqueProducts', 0)),
+                    'avg_transaction_value': float(kpis.get('averageBasketValue', 0.0)),
+                    'items_per_basket': float(kpis.get('itemsPerBasket', 0.0)),
+                    'top_products': top_products,
+                    'source': 'active-uploaded-dataset',
+                }), 200
+
         analytics = recommender.get_analytics()
+        analytics['source'] = 'fallback-trained-model-data'
         return jsonify(analytics), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ==================== BI OVERVIEW ====================
+@app.route('/api/bi/overview', methods=['GET'])
+def get_bi_overview():
+    """Get BI dashboard payload for active uploaded dataset."""
+    try:
+        payload = _build_bi_overview_payload()
+        if not payload.get('ready'):
+            return jsonify(payload), 400
+        return jsonify(payload), 200
+    except Exception as exc:
+        return jsonify({'ready': False, 'error': str(exc)}), 500
+
+
+# ==================== BI PRODUCT DETAIL ====================
+@app.route('/api/bi/product-detail', methods=['GET'])
+def get_bi_product_detail():
+    """Get BI detail view for a selected product."""
+    try:
+        product_name = str(request.args.get('product', '') or '').strip()
+        payload = _build_bi_product_detail(product_name)
+        if not payload.get('ready'):
+            return jsonify(payload), 400
+        return jsonify(payload), 200
+    except Exception as exc:
+        return jsonify({'ready': False, 'error': str(exc)}), 500
 
 # ==================== PRODUCT DETAILS ====================
 @app.route('/api/products/<path:product_name>', methods=['GET'])
@@ -553,6 +990,8 @@ if __name__ == '__main__':
     print("  - POST /api/segments")
     print("  - POST /api/predict")
     print("  - GET  /api/analytics")
+    print("  - GET  /api/bi/overview")
+    print("  - GET  /api/bi/product-detail?product=<name>")
     print("  - GET  /api/products")
     print("  - POST /api/fbt")
     print("  - GET  /api/models")

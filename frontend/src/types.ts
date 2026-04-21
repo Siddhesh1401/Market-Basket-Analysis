@@ -86,3 +86,82 @@ export type AnalysisParams = {
   minLift: number;
   topN: number;
 };
+
+export type BIKpis = {
+  totalTransactions: number;
+  totalRows: number;
+  uniqueProducts: number;
+  totalRevenue: number;
+  averageBasketValue: number;
+  itemsPerBasket: number;
+  repeatPurchaseRate: number | null;
+  highLiftRuleCount: number;
+  topCrossSellPair: {
+    antecedent: string;
+    consequent: string;
+    lift: number;
+    confidence: number;
+  } | null;
+};
+
+export type BITrendPoint = {
+  period: string;
+  transactions: number;
+  revenue: number;
+  avgBasketValue: number;
+};
+
+export type BIProductRow = {
+  name: string;
+  transactionCount: number;
+  quantity: number;
+  revenue: number;
+  avgPrice: number;
+  lastSeen: string | null;
+  transactionShare: number;
+};
+
+export type BITransactionRow = {
+  invoice: string;
+  itemCount: number;
+  totalQuantity: number;
+  totalValue: number;
+  country: string;
+  datetime: string | null;
+  items: string[];
+};
+
+export type BIOverviewResponse = {
+  ready: boolean;
+  error?: string;
+  generatedAt?: string;
+  kpis?: BIKpis;
+  trends?: {
+    transactions: BITrendPoint[];
+  };
+  products?: BIProductRow[];
+  transactions?: BITransactionRow[];
+  rules?: Rule[];
+};
+
+export type BIProductDetailResponse = {
+  ready: boolean;
+  error?: string;
+  product?: {
+    name: string;
+    transactionCount: number;
+    quantity: number;
+    revenue: number;
+    avgPrice: number;
+    topCoPurchased: Array<{
+      item: string;
+      coOccurrenceCount: number;
+      coOccurrenceRate: number;
+    }>;
+    relatedRules: Rule[];
+    trend: Array<{
+      period: string;
+      transactions: number;
+    }>;
+  };
+};

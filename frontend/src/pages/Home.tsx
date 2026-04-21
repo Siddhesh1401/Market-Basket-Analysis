@@ -16,6 +16,7 @@ import {
   FiX,
   FiBook,
   FiDownload,
+  FiActivity,
 } from "react-icons/fi";
 
 type HomeProps = {
@@ -40,7 +41,7 @@ function Home({ hasDataset, hasInsights, fileName, onLoadDemoData }: HomeProps) 
     },
     {
       title: "Use intelligence pages",
-      description: "Open Simulator, Segmentation, Prediction, and Reports.",
+      description: "Open BI, Reports, Simulator, Segmentation, and Prediction.",
       complete: hasInsights,
     },
   ];
@@ -85,6 +86,14 @@ function Home({ hasDataset, hasInsights, fileName, onLoadDemoData }: HomeProps) 
       route: hasDataset ? "/reports" : "/workspace",
       status: hasDataset ? (hasInsights ? "ready" : "pending") : "locked",
       action: hasDataset ? (hasInsights ? "Open Reports" : "Run Analysis First") : "Upload Dataset",
+    },
+    {
+      title: "BI Analytics",
+      description: "Explore transaction KPIs, trend charts, product drill-down, and invoice details.",
+      icon: FiActivity,
+      route: hasDataset ? "/bi" : "/workspace",
+      status: hasDataset ? (hasInsights ? "ready" : "pending") : "locked",
+      action: hasDataset ? (hasInsights ? "Open BI Analytics" : "Run Analysis First") : "Upload Dataset",
     },
   ] as const;
 
@@ -163,14 +172,19 @@ function Home({ hasDataset, hasInsights, fileName, onLoadDemoData }: HomeProps) 
                     Perfect for sharing with stakeholders.</p>
                   </div>
                   <div className="tutorial-page">
+                    <h4>BI Analytics</h4>
+                    <p>Interactive business-intelligence dashboard with KPI cards, product-level drill-down,
+                    and transaction explorer to inspect full dataset behavior.</p>
+                  </div>
+                  <div className="tutorial-page">
                     <h4>Segmentation</h4>
                     <p>Identify different types of customers and their behaviors. 
                     Get strategic guidance for each segment.</p>
                   </div>
                   <div className="tutorial-page">
                     <h4>Prediction</h4>
-                    <p>Predict how likely a customer is to buy something based on their current basket. 
-                    Find the next products they'll probably want.</p>
+                    <p>Predict how likely a customer is to buy based on their current basket and get timing guidance
+                    for when to intervene.</p>
                   </div>
                 </div>
               </section>
@@ -331,7 +345,7 @@ function Home({ hasDataset, hasInsights, fileName, onLoadDemoData }: HomeProps) 
             </li>
             <li>
               <FiTrendingUp />
-              <span>Simulator, Segmentation, Prediction, and Reports use a unified analysis context.</span>
+              <span>BI, Simulator, Segmentation, Prediction, and Reports use a unified analysis context.</span>
             </li>
           </ul>
         </article>
